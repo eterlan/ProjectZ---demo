@@ -168,7 +168,6 @@ public class DecisionSystem : JobComponentSystem
     }
     protected override void OnCreateManager()
     {
-        //commandBufferSystem = World.GetOrCreateManager<EndSimulationEntityCommandBufferSystem>();
         m_NPCGroup = GetComponentGroup(new EntityArchetypeQuery{
             All = new[] {
                 ComponentType.ReadOnly<HumanStateFactor>(),

@@ -11,23 +11,16 @@ public class BehaviourSystem : JobComponentSystem
     private bool IsInitialize = false;
     public ComponentGroup m_ExecuteBehaviourGroup;
     private List<BehaviourValue> m_UniqueType = new List<BehaviourValue>(5);
-    private NativeArray<ByteBool> IsTimerStarted;
-    private NativeArray<int> StartRecordedTimes;
-    public int executingCount;
     
-
-
+    // For add Timer purpose.
+    public ComponentGroup m_BeforeAdded;
+    
     // Problem with NativeArray, if you need to deal with data within different system, you have to put it back to component.
     [RequireComponentTag(typeof(BehaviourValue))]
     [BurstCompile]
-    public struct ProcessFactor : IJobProcessComponentDataWithEntity<HumanStateFactor, HumanStockFactor, BehaviourType, NavigationTag, Timers>
+    public struct ProcessFactor : IJobProcessComponentDataWithEntity<HumanStateFactor, HumanStockFactor, BehaviourType, NavigationTag, Timer<BehaviourValue>>
     {
-        // Settings
         [ReadOnly] public BehaviourValue settings;
-        public NativeArray<ByteBool> IsTimerStarted;
-        public NativeArray<int> StartRecordedTimes;
-        // int gainFactor;
-        // int payFactor;
         
         // Various behaviour has different effect.
         private void CalculateBehaviourEffect(ref int gainFactor, ref int payFactor, int gainValue, int payValue)
@@ -62,13 +55,14 @@ public class BehaviourSystem : JobComponentSystem
             }
         }
         // How to implement Cooldown?
-        public void Execute(Entity entity, int index, ref HumanStateFactor stateFactor, ref HumanStockFactor stockFactor, [ReadOnly]ref BehaviourType behaviourType, [ReadOnly]ref NavigationTag navigationTag, [ReadOnly]ref Timers timers)
+        public void Execute(Entity entity, int index, ref HumanStateFactor stateFactor, ref HumanStockFactor stockFactor, [ReadOnly]ref BehaviourType behaviourType, [ReadOnly]ref NavigationTag navigationTag, ref Timer<BehaviourValue> behavTimer)
         {
             
             // if arrived, behave.
             if (navigationTag.Arrived)
             {   
                 PrepareValueForBehaviour (behaviourType.Behaviour, settings, stateFactor, stockFactor, out int gainValue, out int payValue, out int coolDownTime);
+                // 0.1 
                 // If Timer Haven't Start. Record Start Time.
                 // if ( !IsTimerStarted[index] )   
                 // { 
@@ -78,14 +72,34 @@ public class BehaviourSystem : JobComponentSystem
                 // // Timer Finished
                 // if ( math.abs (time.Game_ElapsedTimeInMinute - StartRecordedTimes[index]) > coolDownTime )
                 // {
-                if ( !timers.timer.Started)
+                // 0.2
+                // if ( !timers.timer.Started)
+                // {
+                //     timers.timer.Duration = coolDownTime;
+                //     timers.timer.Run();
+                // }
+                // if ( timers.timer.Finished)
+                // { 
+                //     switch (behaviourType.Behaviour)
+                //     {
+                //         case BehaviourTypes.Eat :
+                //         CalculateBehaviourEffect(ref stateFactor.Hungry, ref stockFactor.Food, gainValue, payValue); 
+                //         break;
+                //     case BehaviourTypes.Drink :
+                //         CalculateBehaviourEffect(ref stateFactor.Thirsty, ref stockFactor.Water, gainValue, payValue);
+                //         break;
+                //     }
+                //     timers.timer.Started = false;
+                // }
+
+                // Schedule Timer when not started.
+                if ( !behavTimer.Started )
                 {
-                    timers.timer.Duration = coolDownTime;
-                    timers.timer.elapsedTime = 0;
-                    timers.timer.Started = true;
-                    timers.timer.Running = true;
-                }
-                if ( timers.timer.Finished)
+                    behavTimer.Duration = coolDownTime;
+                    behavTimer.Run();
+                } 
+                // Timer finished so start to do sth.
+                if ( behavTimer.Finished)
                 { 
                     switch (behaviourType.Behaviour)
                     {
@@ -96,27 +110,18 @@ public class BehaviourSystem : JobComponentSystem
                         CalculateBehaviourEffect(ref stateFactor.Thirsty, ref stockFactor.Water, gainValue, payValue);
                         break;
                     }
-                    timers.timer.Started = false;
+                    behavTimer.Stop();
                 }
             }       
         }
-    }
-
-    protected override void OnStopRunning()
-    {
-        StartRecordedTimes.Dispose();
-
-        IsTimerStarted.Dispose();
     }
 
     protected override JobHandle OnUpdate(JobHandle inputDependency)
     {
         if (!IsInitialize)
         {
-            executingCount     = m_ExecuteBehaviourGroup.CalculateLength();
-            StartRecordedTimes = new NativeArray<int>(executingCount, Allocator.Persistent);
-            IsTimerStarted     = new NativeArray<ByteBool>(executingCount, Allocator.Persistent);
             IsInitialize       = true;
+            EntityManager.AddComponent(m_BeforeAdded, ComponentType.ReadWrite<Timer<BehaviourValue>>());
         }
 
         EntityManager.GetAllUniqueSharedComponentData(m_UniqueType);
@@ -131,11 +136,8 @@ public class BehaviourSystem : JobComponentSystem
         var ProcessFactorJob = new ProcessFactor
         {
             settings           = settings,
-            StartRecordedTimes = StartRecordedTimes,
-            IsTimerStarted        = IsTimerStarted
         };
-        var ProcessFactorJobHandle = ProcessFactorJob.ScheduleGroup(m_ExecuteBehaviourGroup, inputDependency); 
-
+        var ProcessFactorJobHandle = ProcessFactorJob.ScheduleGroup(m_ExecuteBehaviourGroup, inputDependency);   
         m_UniqueType.Clear();
 
         inputDependency = ProcessFactorJobHandle;
@@ -143,17 +145,30 @@ public class BehaviourSystem : JobComponentSystem
     }
 
     // TEST
-    public void LoopDebug(NativeArray<int> inputArray)
+    public void LoopDebug(NativeArray<Entity> array)
     {
-        for (int i = 0; i < inputArray.Length; i++)
+        for (int i = 0; i < array.Length; i++)
         {
-            Debug.Log($"Array[{i}] = {inputArray[i]}");
+            var hasComponent = EntityManager.HasComponent<Timer<BehaviourValue>>(array[i]);
+            Debug.Log($"Array[{i}] = {hasComponent}");
         }
     } 
 
 
     protected override void OnCreateManager()
     {
+
+        m_BeforeAdded = GetComponentGroup(new EntityArchetypeQuery{
+            All = new[] {
+                ComponentType.ReadOnly<BehaviourType>(),
+                ComponentType.ReadOnly<BehaviourValue>(),
+                ComponentType.ReadWrite<HumanStateFactor>(),
+                ComponentType.ReadWrite<HumanStockFactor>(),
+                ComponentType.ReadOnly<NavigationTag>(),
+                // is it possible RO?
+            },
+        }); 
+        // Cannot get manager in OnCreateManager?
         m_ExecuteBehaviourGroup = GetComponentGroup(new EntityArchetypeQuery{
             All = new[] {
                 ComponentType.ReadOnly<BehaviourType>(),
@@ -161,10 +176,10 @@ public class BehaviourSystem : JobComponentSystem
                 ComponentType.ReadWrite<HumanStateFactor>(),
                 ComponentType.ReadWrite<HumanStockFactor>(),
                 ComponentType.ReadOnly<NavigationTag>(),
-                ComponentType.ReadOnly<Timers>(),
+                // is it possible RO? yes.. that might be a problem
+                ComponentType.ReadWrite<Timer<BehaviourValue>>(),
             },
-        });     
-        // Cannot get manager in OnCreateManager?
+        }); 
     }
 
 }

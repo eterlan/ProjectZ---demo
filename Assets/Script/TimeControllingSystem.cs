@@ -10,21 +10,21 @@ public class TimeControllingSystem : JobComponentSystem
 {
     ComponentGroup m_HumanGroup;
     ComponentGroup m_TimerGroup;
-    public struct RunTimer : IJobProcessComponentData<Timers>
-    {
-        public float deltaTime;
-        public void Execute( ref Timers timers)
-        {
-            if (timers.timer.Running)
-            {
-                timers.timer.elapsedTime += deltaTime;
-                if (timers.timer.elapsedTime > timers.timer.Duration)
-                {
-                    timers.timer.Running = false;
-                }
-            }      
-        }
-    }
+    // public struct RunTimer : IJobProcessComponentData<Timers>
+    // {
+    //     public float deltaTime;
+    //     public void Execute( ref Timers timers)
+    //     {
+    //         if (timers.timer.Running)
+    //         {
+    //             timers.timer.elapsedTime += deltaTime;
+    //             if (timers.timer.elapsedTime > timers.timer.Duration)
+    //             {
+    //                 timers.timer.Running = false;
+    //             }
+    //         }      
+    //     }
+    // }
     [BurstCompile]
     public struct RecordTime : IJobProcessComponentData<TimeRecord>
     {
@@ -77,15 +77,15 @@ public class TimeControllingSystem : JobComponentSystem
         };
         var RecordTimeJobHandle = RecordTimeJob.ScheduleGroup(m_HumanGroup, inputDependency);
 
-        var RunTimerJob = new RunTimer
-        {
-            deltaTime = deltaTime,
-        };
-        var RunTimerJobHandle = RunTimerJob.ScheduleGroup(m_TimerGroup, inputDependency);
+        // var RunTimerJob = new RunTimer
+        // {
+        //     deltaTime = deltaTime,
+        // };
+        // var RunTimerJobHandle = RunTimerJob.ScheduleGroup(m_TimerGroup, inputDependency);
 
-        var TimeJobHandleBarrier = JobHandle.CombineDependencies( RecordTimeJobHandle, RunTimerJobHandle );
+        //var TimeJobHandleBarrier = JobHandle.CombineDependencies( RecordTimeJobHandle, RunTimerJobHandle );
         
-        inputDependency = TimeJobHandleBarrier;
+        inputDependency = RecordTimeJobHandle;
         return inputDependency;
     }
     protected override void OnCreateManager()
@@ -97,10 +97,10 @@ public class TimeControllingSystem : JobComponentSystem
                 ComponentType.ReadOnly<HumanStockFactor>(),
             },
         });
-        m_TimerGroup = GetComponentGroup( new EntityArchetypeQuery {
-            All =  new[] {
-                ComponentType.ReadWrite<Timers>(),
-            }
-        });
+        // m_TimerGroup = GetComponentGroup( new EntityArchetypeQuery {
+        //     All =  new[] {
+        //         ComponentType.ReadWrite<Timers>(),
+        //     }
+        // });
     }
 }
