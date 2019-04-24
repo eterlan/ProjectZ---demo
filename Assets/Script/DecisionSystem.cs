@@ -58,7 +58,7 @@ public class DecisionSystem : JobComponentSystem
     {
         [ReadOnly]
         public BufferFromEntity<BehaviourTendency> GetBehaviourTendencyBuffer;
-        private void CompareLargerestTendency(DynamicBuffer<BehaviourTendency> behaviourTendencies , out int largerestTendencyType, out float largerestTendency)
+        private void CompareLargerestTendency(NativeArray<BehaviourTendency> behaviourTendencies , out int largerestTendencyType, out float largerestTendency)
         {
             var length             = behaviourTendencies.Length;
 
@@ -78,11 +78,7 @@ public class DecisionSystem : JobComponentSystem
         {
             var prevBehaviour = BehaviourType.Behaviour;
 
-            var behaviourTendencys = GetBehaviourTendencyBuffer[entity];
-
-            //TEST
-            //var BTAsNativeArray = behaviourTendencys.AsNativeArray();
-            //can not readonly? -> can parallel
+            var behaviourTendencys = GetBehaviourTendencyBuffer[entity].AsNativeArray();
 
             CompareLargerestTendency (behaviourTendencys, out int largerestTendencyType, out float LargerestTendency); 
             BehaviourType = largerestTendencyType;

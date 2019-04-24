@@ -5,12 +5,12 @@ using Unity.Jobs;
 using Unity.Mathematics;
 using UnityEngine;
 
-public struct Timer<T> : IComponentData
+public struct Timer : IBufferElementData
 {
     public float elapsedTime;
-    private float duration;
-    private bool running;
-    private bool started;
+    public float duration;
+    public bool running;
+    public bool started;
     
     public bool Started
     {
@@ -53,38 +53,78 @@ public struct Timer<T> : IComponentData
     }
 }
 
-public class TimerUpdateGroup : ComponentSystemGroup { }
-[UpdateInGroup(typeof(TimerUpdateGroup))]
-public abstract class TimerSystem<T> : JobComponentSystem where T : struct
+// foreach buffer
+
+// update each element in it.
+public class TimerSystem : JobComponentSystem
 {
-    public struct TimerUpdateJob : IJobForEach<Timer<T>>
+    private EntityQuery m_TimerGroup;
+   
+    public struct TimerUpdateJob : IJob
     {
+        [DeallocateOnJobCompletion]
+        public NativeArray<ArchetypeChunk> chunks;
+        public ArchetypeChunkBufferType<Timer> timersType;
         public float deltaTime;
-        public void Execute(ref Timer<T> c0)
+        public void Execute()
         {
-            if (c0.Running)
+            // how many chunks?
+            for (int i = 0; i < chunks.Length; i++)
             {
-                c0.elapsedTime += deltaTime;
-                if (c0.elapsedTime > c0.Duration)
+                var chunk = chunks[i];
+                var timersAccessor = chunk.GetBufferAccessor<Timer>(timersType);
+
+                // I think chunk.Count == timersAccessor.Length == naArray<Archetype>.Length
+                // how many entities in this chunk?
+                for (int j = 0; j < chunk.Count; j++)
                 {
-                    c0.Running = false;
+                    var timers = timersAccessor[j];
+                    // how many timer in Timers Array?
+                    for (int k = 0; k < timers.Length; k++)
+                    {
+                        var copyTimer = timers[k];
+                        //Debug.Log("not running");
+                        if (copyTimer.Running)
+                        {
+                            //Debug.Log("running");
+                            timers[k] = new Timer
+                            {
+                                started = timers[k].started,
+                                running = timers[k].running,
+                                elapsedTime = timers[k].elapsedTime + deltaTime,
+                                duration = timers[k].duration,
+                            };
+                            if (copyTimer.elapsedTime > copyTimer.Duration)
+                            {
+                                timers[k] = new Timer
+                                {
+                                    running = false,
+                                    started = true,
+                                };
+                            }
+                        }   
+                    }                    
                 }
-            } 
+            }            
         }
     }
 
     protected override JobHandle OnUpdate(JobHandle inputDeps)
     {
+        var chunks = m_TimerGroup.CreateArchetypeChunkArray(Allocator.TempJob);
+
         return new TimerUpdateJob{
+            chunks = chunks,
+            timersType = GetArchetypeChunkBufferType<Timer>(false),
             deltaTime = Time.deltaTime,
-        }.Schedule(this, inputDeps);
+        }.Schedule(inputDeps);
     }
-}
-
-//somewhere...
-//EntityManager.AddComponentData(entity, new Timer<MySpecificTimer>());
-
-public class BehaviourTimerSystem : TimerSystem<BehaviourValue> 
-{
-    
+    protected override void OnCreate()
+    {
+        m_TimerGroup = GetEntityQuery(new EntityQueryDesc{
+            All = new ComponentType[] {
+                typeof(Timer),
+            }
+        });
+    }
 }
