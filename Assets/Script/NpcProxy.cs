@@ -1,15 +1,15 @@
 ﻿using Unity.Entities;
 using UnityEngine;
 
-public struct NpcTag : IComponentData
+public struct Npc : IComponentData
 {
 
 }
-public class NpcTagProxy : MonoBehaviour, IConvertGameObjectToEntity
+public class NpcProxy : MonoBehaviour, IConvertGameObjectToEntity
 {
     public void Convert(Entity entity, EntityManager manager, GameObjectConversionSystem conversionSystem)
     {
-        var data = new NpcTag { };
+        var data = new Npc { };
         manager.AddComponentData(entity, data);
     }
 }

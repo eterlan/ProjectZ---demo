@@ -9,7 +9,7 @@
 # How many Bool is required?
 
 1. 一个bool
-```
+```C#
 if (inSomeState)
 {
     if (!initialized)
@@ -27,7 +27,7 @@ if (inSomeState)
 }
 ```
 2. 两个bool
-```
+```C#
 if (inSomeState)
 {
     if (!started)
@@ -47,7 +47,7 @@ if (inSomeState)
 ```
 
 3. 3个bool
-```
+```C#
 if (inSomeState)
 {
     if (!running)

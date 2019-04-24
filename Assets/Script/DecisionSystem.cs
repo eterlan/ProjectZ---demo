@@ -11,18 +11,18 @@ using static System.Enum;
 [UpdateInGroup(typeof(SimulationSystemGroup))]
 public class DecisionSystem : JobComponentSystem
 {
-    public ComponentGroup m_NPCGroup;
-    public BufferFromEntity<BehaviourTendencyBufferElement> GetBehaviourTendencyBuffer;
+    public EntityQuery m_NPCGroup;
+    public BufferFromEntity<BehaviourTendency> GetBehaviourTendencyBuffer;
 
     EndSimulationEntityCommandBufferSystem commandBufferSystem;
     public bool IsIntialized;
     public int npcCount;
 
     [BurstCompile]
-    public struct ProcessTendency : IJobProcessComponentDataWithEntity<HumanStateFactor, HumanStockFactor>
+    public struct ProcessTendency : IJobForEachWithEntity<HumanStateFactor, HumanStockFactor>
     {
         [NativeDisableParallelForRestriction]
-        public BufferFromEntity<BehaviourTendencyBufferElement> GetBehaviourTendencyBuffer;
+        public BufferFromEntity<BehaviourTendency> GetBehaviourTendencyBuffer;
 
         private float CalculateTendencyHasStock(int pFactor, int nFactor,int pMax,int nMax, float pImpactor, float nImpactor, bool IsStockPositiveFactor)
         {
@@ -41,7 +41,7 @@ public class DecisionSystem : JobComponentSystem
 
         public void Execute(Entity entity, int index, ref HumanStateFactor stateFactor, ref HumanStockFactor stockFactor)
         {
-            
+            //stateFactor.d[0] += 1;
             var eatTendency = CalculateTendencyHasStock(stateFactor.Hungry,stockFactor.Food,100,10,1f,0.2f,false);
             var drinkTendency = CalculateTendencyHasStock(stateFactor.Thirsty,stockFactor.Water,100,10,1,0.2f,false);
             
@@ -54,47 +54,38 @@ public class DecisionSystem : JobComponentSystem
     }
 
     [BurstCompile]
-    public struct CompareTendency : IJobProcessComponentDataWithEntity<BehaviourType, NavigationTag>
+    public struct CompareTendency : IJobForEachWithEntity<BehaviourType, NavigationTag>
     {
         [ReadOnly]
-        public BufferFromEntity<BehaviourTendencyBufferElement> GetBehaviourTendencyBuffer;
-        [ReadOnly]
-        private DynamicBuffer<BehaviourTendencyBufferElement>   behaviourTendencys;
-        // public EntityCommandBuffer.Concurrent commandBuffer;
-        // [DeallocateOnJobCompletion]
-        // public NativeArray<bool> hasNavigationTags;
-
-        private void CompareLargerestTendency(DynamicBuffer<BehaviourTendencyBufferElement> behaviourTendencys, out int largerestTendencyType, out float largerestTendency)
+        public BufferFromEntity<BehaviourTendency> GetBehaviourTendencyBuffer;
+        private void CompareLargerestTendency(DynamicBuffer<BehaviourTendency> behaviourTendencies , out int largerestTendencyType, out float largerestTendency)
         {
-            var length             = behaviourTendencys.Length;
+            var length             = behaviourTendencies.Length;
 
             largerestTendencyType = 0;
-            largerestTendency      = behaviourTendencys[0];
+            largerestTendency      = behaviourTendencies[0];
 
             for (int i = 0; i < length; i++)
             {
-                var tendency = behaviourTendencys[i];
+                var tendency = behaviourTendencies[i];
                 var Larger   = tendency > largerestTendency;
                 largerestTendencyType = math.select(largerestTendencyType, i, Larger);
             }
-            largerestTendency = behaviourTendencys[largerestTendencyType];
+            largerestTendency = behaviourTendencies[largerestTendencyType];
         }
 
         public void Execute(Entity entity, int index, ref BehaviourType BehaviourType, ref NavigationTag navigationTag)
         {
             var prevBehaviour = BehaviourType.Behaviour;
 
-            behaviourTendencys = GetBehaviourTendencyBuffer[entity];
+            var behaviourTendencys = GetBehaviourTendencyBuffer[entity];
+
+            //TEST
+            //var BTAsNativeArray = behaviourTendencys.AsNativeArray();
+            //can not readonly? -> can parallel
+
             CompareLargerestTendency (behaviourTendencys, out int largerestTendencyType, out float LargerestTendency); 
             BehaviourType = largerestTendencyType;
-
-            //try -> compare components directly rather than values inside of it.
-            // if (prevBehaviour != BehaviourType.Behaviour && !hasNavigationTags[index])
-            // {
-            //     commandBuffer.AddComponent(index,entity,new NavigationTag());
-            //     prevBehaviour = BehaviourType.Behaviour;
-            //     //hasNavigationTags[index] = true;
-            // }
 
             // prevArrived or not, change to false.
             if (prevBehaviour != BehaviourType.Behaviour)
@@ -105,25 +96,20 @@ public class DecisionSystem : JobComponentSystem
         }
     }
 
-    protected override void OnStopRunning()
-    {
-        //hasNavigationTags.Dispose();
-    }
-
     void Initialize()
     {
-        var GetBehaviourTendencyBuffer = GetBufferFromEntity<BehaviourTendencyBufferElement>(false);
+        var GetBehaviourTendencyBuffer = GetBufferFromEntity<BehaviourTendency>(false);
         var entities                   = m_NPCGroup.ToEntityArray(Allocator.TempJob);
         var behavCount                 = GetNames(typeof(BehaviourTypes)).Length;
         npcCount                       = entities.Length;
 
-        DynamicBuffer<BehaviourTendencyBufferElement> BehaviourTendencyElements;
+        DynamicBuffer<BehaviourTendency> behaviourTendencies;
         for (int index = 0; index < npcCount; index++)
         {
-            BehaviourTendencyElements = GetBehaviourTendencyBuffer[entities[index]];
+            behaviourTendencies = GetBehaviourTendencyBuffer[entities[index]];
             for (int j = 0; j < behavCount; j++)
             {
-                BehaviourTendencyElements.Add(0);
+                behaviourTendencies.Add(0);
             }
         }
         IsIntialized = true;
@@ -142,21 +128,20 @@ public class DecisionSystem : JobComponentSystem
         // {
         //     hasNavigationTags[index] = EntityManager.HasComponent<NavigationTag>(entities[index]);
         // }
-
         var ProcessTendencyJob = new ProcessTendency
         {
-            GetBehaviourTendencyBuffer = GetBufferFromEntity<BehaviourTendencyBufferElement>(false),
+            GetBehaviourTendencyBuffer = GetBufferFromEntity<BehaviourTendency>(false),
         };
 
-        var ProcessTendencyJobHandle = ProcessTendencyJob.ScheduleGroup(m_NPCGroup, inputDependency);
+        var ProcessTendencyJobHandle = ProcessTendencyJob.Schedule(m_NPCGroup, inputDependency);
 
         var CompareTendencyJob = new CompareTendency
         {      
-            GetBehaviourTendencyBuffer = GetBufferFromEntity<BehaviourTendencyBufferElement>(true),
+            GetBehaviourTendencyBuffer = GetBufferFromEntity<BehaviourTendency>(true),
             //commandBuffer = commandBufferSystem.CreateCommandBuffer().ToConcurrent(),    
         };
 
-        var CompareTendencyJobHandle = CompareTendencyJob.ScheduleGroup(m_NPCGroup, ProcessTendencyJobHandle);
+        var CompareTendencyJobHandle = CompareTendencyJob.Schedule(m_NPCGroup, ProcessTendencyJobHandle);
 
         inputDependency = CompareTendencyJobHandle;
         m_NPCGroup.AddDependency(inputDependency);
@@ -168,16 +153,16 @@ public class DecisionSystem : JobComponentSystem
     }
     protected override void OnCreateManager()
     {
-        m_NPCGroup = GetComponentGroup(new EntityArchetypeQuery{
+        m_NPCGroup = GetEntityQuery(new EntityQueryDesc{
             All = new[] {
                 ComponentType.ReadOnly<HumanStateFactor>(),
                 ComponentType.ReadOnly<HumanStockFactor>(),
                 ComponentType.ReadOnly<BehaviourType>(),
                 ComponentType.ReadWrite<NavigationTag>(),
-                typeof(BehaviourTendencyBufferElement),        
+                typeof(BehaviourTendency),        
             },
             None = new[] {
-                ComponentType.ReadOnly<PlayerTag>(),
+                ComponentType.ReadOnly<Player>(),
             }  
         });
     } 

@@ -1,17 +1,17 @@
 using Unity.Entities;
 using UnityEngine;
 
-public struct PlayerTag : IComponentData
+public struct Player : IComponentData
 {
 
 }
 
 //
-public class PlayerTagProxy : MonoBehaviour, IConvertGameObjectToEntity
+public class PlayerProxy : MonoBehaviour, IConvertGameObjectToEntity
 {
     public void Convert(Entity entity, EntityManager manager, GameObjectConversionSystem conversionSystem)
     {
-        var data = new PlayerTag { };
+        var data = new Player();
         manager.AddComponentData(entity, data);
     }
 }

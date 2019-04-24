@@ -3,7 +3,7 @@ using UnityEngine;
 
 public struct NavigationTag : IComponentData
 {
-    public ByteBool Arrived;
+    public bool Arrived;
 }
 
 public class NavigationTagProxy : MonoBehaviour, IConvertGameObjectToEntity

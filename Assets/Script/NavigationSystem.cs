@@ -10,14 +10,14 @@ using System.Collections.Generic;
 
 public class NavigationSystem : JobComponentSystem 
 {
-    private ComponentGroup m_NPCHasNavigationTag;
-    private ComponentGroup m_TreeGroup;
-    private ComponentGroup m_HouseGroup;
+    private EntityQuery m_NPCHasNavigationTag;
+    private EntityQuery m_TreeGroup;
+    private EntityQuery m_HouseGroup;
     //public EndSimulationEntityCommandBufferSystem commandBufferSystem;
 
 
     [BurstCompile]
-    public struct CopyPositions : IJobProcessComponentDataWithEntity<LocalToWorld>
+    public struct CopyPositions : IJobForEachWithEntity<LocalToWorld>
     {
         public NativeArray<float3> positions;
         public void Execute(Entity entity, int index, [ReadOnly]ref LocalToWorld localToWorld)
@@ -29,7 +29,7 @@ public class NavigationSystem : JobComponentSystem
         }
     }
     [BurstCompile]
-    public struct CopyBehaviourTargets : IJobProcessComponentDataWithEntity<BehaviourType>
+    public struct CopyBehaviourTargets : IJobForEachWithEntity<BehaviourType>
     {
         public NativeArray<BehaviourTypes> behaviourTargets;
         public void Execute(Entity entity, int index, [ReadOnly]ref BehaviourType behaviourTarget)
@@ -39,7 +39,7 @@ public class NavigationSystem : JobComponentSystem
     }
 
     [BurstCompile]
-    public struct FindClosestTarget : IJobProcessComponentDataWithEntity<Translation>
+    public struct FindClosestTarget : IJobForEachWithEntity<Translation>
     {
         [DeallocateOnJobCompletion]
         public NativeArray<int> targetIndices;
@@ -107,7 +107,7 @@ public class NavigationSystem : JobComponentSystem
     }
 
     [BurstCompile]
-    public struct Movement : IJobProcessComponentDataWithEntity<Translation, MovementSpeed,Rotation, NavigationTag>
+    public struct Movement : IJobForEachWithEntity<Translation, MovementSpeed,Rotation, NavigationTag>
     {
         public float DeltaTime;
         [DeallocateOnJobCompletion]
@@ -165,19 +165,19 @@ public class NavigationSystem : JobComponentSystem
         {
             positions = copyTreePositions,
         };     
-        var CopyTreePositionsJobHandle = CopyTreePositionsJob.ScheduleGroup(m_TreeGroup, inputDependency);
+        var CopyTreePositionsJobHandle = CopyTreePositionsJob.Schedule(m_TreeGroup, inputDependency);
 
         CopyPositions CopyHousePositionsJob = new CopyPositions
         {
             positions = copyHousePositions,
         };
-        var copyHousePositionsJobHandle   = CopyHousePositionsJob.ScheduleGroup(m_HouseGroup, inputDependency);
+        var copyHousePositionsJobHandle   = CopyHousePositionsJob.Schedule(m_HouseGroup, inputDependency);
 
         CopyBehaviourTargets copyBehaviourTargetsJob = new CopyBehaviourTargets
         {
             behaviourTargets = behaviourTargets,
         };
-        var copyBehaviourTargetsJobHandle = copyBehaviourTargetsJob.ScheduleGroup(m_NPCHasNavigationTag, inputDependency);
+        var copyBehaviourTargetsJobHandle = copyBehaviourTargetsJob.Schedule(m_NPCHasNavigationTag, inputDependency);
 
         var CopyTargetAndPositionsBarrierJobHandle = JobHandle.CombineDependencies(CopyTreePositionsJobHandle,copyHousePositionsJobHandle,copyBehaviourTargetsJobHandle);
 
@@ -192,7 +192,7 @@ public class NavigationSystem : JobComponentSystem
             targetDir_Nors   = targetDir_Nors,
             behaviourTargets = behaviourTargets,
         };
-        var FindTargetJobHandle = findtargetJob.ScheduleGroup(m_NPCHasNavigationTag, CopyTargetAndPositionsBarrierJobHandle);     
+        var FindTargetJobHandle = findtargetJob.Schedule(m_NPCHasNavigationTag, CopyTargetAndPositionsBarrierJobHandle);     
         Movement MovementJob = new Movement
         {
             DeltaTime       = Time.deltaTime,
@@ -200,7 +200,7 @@ public class NavigationSystem : JobComponentSystem
             targetDistances = targetDistances,
             //commandBuffer   = commandBufferSystem.CreateCommandBuffer().ToConcurrent(),
         };
-        var MovementJobHandle = MovementJob.ScheduleGroup(m_NPCHasNavigationTag, FindTargetJobHandle);
+        var MovementJobHandle = MovementJob.Schedule(m_NPCHasNavigationTag, FindTargetJobHandle);
 
         inputDependency       = MovementJobHandle;
         //Why add dependency to Group?
@@ -233,11 +233,11 @@ public class NavigationSystem : JobComponentSystem
     protected override void OnCreateManager()
     {
         //commandBufferSystem   = World.GetOrCreateManager<EndSimulationEntityCommandBufferSystem>();
-        m_NPCHasNavigationTag = GetComponentGroup(new EntityArchetypeQuery
+        m_NPCHasNavigationTag = GetEntityQuery(new EntityQueryDesc
         {
             All = new []
             {
-                ComponentType.ReadOnly<NpcTag>(),
+                ComponentType.ReadOnly<Npc>(),
                 ComponentType.ReadWrite<Translation>(),
                 ComponentType.ReadWrite<Rotation>(),
                 ComponentType.ReadOnly<MovementSpeed>(),
@@ -245,7 +245,7 @@ public class NavigationSystem : JobComponentSystem
                 ComponentType.ReadOnly<NavigationTag>(),
             }
         });
-        m_TreeGroup = GetComponentGroup(new EntityArchetypeQuery
+        m_TreeGroup = GetEntityQuery(new EntityQueryDesc
         {
             All = new []
             {
@@ -253,7 +253,7 @@ public class NavigationSystem : JobComponentSystem
                 ComponentType.ReadOnly<LocalToWorld>(), // static object doesn't has Translation component ?
             }
         });
-        m_HouseGroup = GetComponentGroup(new EntityArchetypeQuery
+        m_HouseGroup = GetEntityQuery(new EntityQueryDesc
         {
             All = new []
             {

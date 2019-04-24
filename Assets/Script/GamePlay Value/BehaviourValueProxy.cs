@@ -1,6 +1,9 @@
 using Unity.Entities;
 using UnityEngine;
+using Unity.Collections;
+using System;
 
+[Serializable]
 public struct BehaviourValue : ISharedComponentData
 {
     public int MaxWater                ;

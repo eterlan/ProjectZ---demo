@@ -57,7 +57,7 @@ public class TimerUpdateGroup : ComponentSystemGroup { }
 [UpdateInGroup(typeof(TimerUpdateGroup))]
 public abstract class TimerSystem<T> : JobComponentSystem where T : struct
 {
-    public struct TimerUpdateJob : IJobProcessComponentData<Timer<T>>
+    public struct TimerUpdateJob : IJobForEach<Timer<T>>
     {
         public float deltaTime;
         public void Execute(ref Timer<T> c0)

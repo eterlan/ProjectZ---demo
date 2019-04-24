@@ -7,11 +7,11 @@ using Unity.Collections;
 
 public class PlayerMovementSystem : JobComponentSystem
 {
-    public struct PlayerMovement : IJobProcessComponentData<Translation, PlayerTag, MovementSpeed, Rotation>
+    public struct PlayerMovement : IJobForEach<Translation, Player, MovementSpeed, Rotation>
     {
         public float deltaTime;
         public float3 playerInput;
-        public void Execute(ref Translation translation,[ReadOnly]ref PlayerTag player,[ReadOnly]ref MovementSpeed movementSpeed,ref Rotation rotation)  
+        public void Execute(ref Translation translation,[ReadOnly]ref Player player,[ReadOnly]ref MovementSpeed movementSpeed,ref Rotation rotation)  
         {
             var moveSpeed     = deltaTime * movementSpeed.Speed;
             var moveDirection = math.normalizesafe(playerInput);

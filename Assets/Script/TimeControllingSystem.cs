@@ -8,9 +8,9 @@ using Unity.Collections;
 
 public class TimeControllingSystem : JobComponentSystem
 {
-    ComponentGroup m_HumanGroup;
-    ComponentGroup m_TimerGroup;
-    // public struct RunTimer : IJobProcessComponentData<Timers>
+    EntityQuery m_HumanGroup;
+    EntityQuery m_TimerGroup;
+    // public struct RunTimer : IJobForEach<Timers>
     // {
     //     public float deltaTime;
     //     public void Execute( ref Timers timers)
@@ -26,7 +26,7 @@ public class TimeControllingSystem : JobComponentSystem
     //     }
     // }
     [BurstCompile]
-    public struct RecordTime : IJobProcessComponentData<TimeRecord>
+    public struct RecordTime : IJobForEach<TimeRecord>
     {
         public float deltaTime;
 
@@ -75,13 +75,13 @@ public class TimeControllingSystem : JobComponentSystem
         {
             deltaTime = deltaTime,
         };
-        var RecordTimeJobHandle = RecordTimeJob.ScheduleGroup(m_HumanGroup, inputDependency);
+        var RecordTimeJobHandle = RecordTimeJob.Schedule(m_HumanGroup, inputDependency);
 
         // var RunTimerJob = new RunTimer
         // {
         //     deltaTime = deltaTime,
         // };
-        // var RunTimerJobHandle = RunTimerJob.ScheduleGroup(m_TimerGroup, inputDependency);
+        // var RunTimerJobHandle = RunTimerJob.Schedule(m_TimerGroup, inputDependency);
 
         //var TimeJobHandleBarrier = JobHandle.CombineDependencies( RecordTimeJobHandle, RunTimerJobHandle );
         
@@ -90,14 +90,14 @@ public class TimeControllingSystem : JobComponentSystem
     }
     protected override void OnCreateManager()
     {
-        m_HumanGroup = GetComponentGroup( new EntityArchetypeQuery {
+        m_HumanGroup = GetEntityQuery( new EntityQueryDesc {
             All = new[] {
                 ComponentType.ReadWrite<TimeRecord>(),
                 ComponentType.ReadOnly<HumanStateFactor>(),
                 ComponentType.ReadOnly<HumanStockFactor>(),
             },
         });
-        // m_TimerGroup = GetComponentGroup( new EntityArchetypeQuery {
+        // m_TimerGroup = GetEntityQuery( new EntityArchetypeQuery {
         //     All =  new[] {
         //         ComponentType.ReadWrite<Timers>(),
         //     }
