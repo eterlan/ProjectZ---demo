@@ -5,7 +5,6 @@ using Unity.Entities;
 public struct Item : ISystemStateBufferElementData
 {
     public Entity Value;
-    public int Index;
 }
 
 public struct Owner : IComponentData

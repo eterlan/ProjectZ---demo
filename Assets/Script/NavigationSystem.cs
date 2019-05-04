@@ -97,12 +97,14 @@ public class NavigationSystem : JobComponentSystem
                     break;
                 }               
             }
-            ClosestTarget(Positions, selfPosition, out int targetIndex, out float targetDistance, out float3 targetDir_Nor);
-
-            targetIndices[index]   = targetIndex;
-            targetDistances[index] = targetDistance;
-            targetPositions[index] = Positions[targetIndex];    
-            targetDir_Nors[index]  = targetDir_Nor;
+            if (Positions.Length > 0)
+            {
+                ClosestTarget(Positions, selfPosition, out int targetIndex, out float targetDistance, out float3 targetDir_Nor);
+                targetIndices[index]   = targetIndex;
+                targetDistances[index] = targetDistance;
+                targetPositions[index] = Positions[targetIndex];    
+                targetDir_Nors[index]  = targetDir_Nor;
+            }               
         }
     }
 
