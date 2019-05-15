@@ -1,18 +1,24 @@
-
 public enum BehaviourTypes
 {
-    Eat, Drink, 
+    Eat,
+    Drink
 }
 
 public enum FactorTypes
 {
-    Hungry, Thirsty, Food, Water
+    Hungry,
+    Thirsty,
+    Food,
+    Water
 }
+
 public enum FoodType
 {
-    Apple, Cake,
+    Apple,
+    Cake
 }
+
 public enum SpType
 {
-    SlowHP,
+    SlowHp
 }

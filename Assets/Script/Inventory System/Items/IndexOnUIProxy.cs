@@ -1,21 +1,22 @@
 using Unity.Entities;
 using UnityEngine;
+using UnityEngine.Serialization;
 
-public struct IndexOnUI : IComponentData
+public struct IndexOnUi : IComponentData
 {
     public int Value;
 }
 
 [RequiresEntityConversion]
-public class IndexOnUIProxy : MonoBehaviour, IConvertGameObjectToEntity
+public class IndexOnUiProxy : MonoBehaviour, IConvertGameObjectToEntity
 {
-    public int Value;
+    [FormerlySerializedAs("Value")] public int value;
 
-    public void Convert( Entity entity, EntityManager manager, GameObjectConversionSystem conversionSystem)
+    public void Convert(Entity entity, EntityManager manager, GameObjectConversionSystem conversionSystem)
     {
-        var data = new IndexOnUI
+        var data = new IndexOnUi
         {
-            Value = Value,
+            Value = value
         };
         manager.AddComponentData(entity, data);
     }

@@ -1,4 +1,3 @@
-using UnityEngine;
 using System.Collections.Generic;
 
 public static class ConstValue
@@ -11,29 +10,28 @@ public static class ConstValue
     public const int MaxSleepiness = 100;
     public const int MaxStamina    = 100;
 
-    public const int DrinkGainThirsty   = -10;
-    public const int DrinkCostWater     = 1;
-    public const int EatGainHungry      = -10;
+    public const int DrinkGainThirsty = -10;
+    public const int DrinkCostWater   = 1;
+    public const int EatGainHungry    = -10;
 
-    public const int EatCostFood        = 1;
+    public const int EatCostFood = 1;
 
     // Time
     public const int DefaultElapsedFactor     = 15;
-    public const int Default_TimeElapsedSpeed = 30;
+    public const int DefaultTimeElapsedSpeed = 30;
 
     // CoolDown
-    public const int EatCoolDownInMinute   = 1;
-    public const int DrinkCoolDownInMinute = 1;
+    public const int EatCoolDownInMinute      = 1;
+    public const int DrinkCoolDownInMinute    = 1;
     public const int GetWaterCoolDownInMinute = 1;
-    public const int HuntCoolDownInMinute = 1;
+    public const int HuntCoolDownInMinute     = 1;
 
 
-    public static Dictionary<FactorTypes, int> maxValue = new Dictionary<FactorTypes, int>()
+    public static Dictionary<FactorTypes, int> MaxValue = new Dictionary<FactorTypes, int>
     {
-        
         {FactorTypes.Food, MaxFood},
-        {FactorTypes.Water, MaxWater},
+        {FactorTypes.Water, MaxWater}
     };
-    //public static Dictionary<>
 
+    //public static Dictionary<>
 }

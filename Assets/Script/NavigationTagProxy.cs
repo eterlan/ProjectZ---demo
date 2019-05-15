@@ -10,7 +10,7 @@ public class NavigationTagProxy : MonoBehaviour, IConvertGameObjectToEntity
 {
     public void Convert(Entity entity, EntityManager manager, GameObjectConversionSystem conversionSystem)
     {
-        var data = new NavigationTag{Arrived = false};
+        var data = new NavigationTag {Arrived = false};
         manager.AddComponentData(entity, data);
     }
 }

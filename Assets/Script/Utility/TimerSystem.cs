@@ -1,55 +1,38 @@
-using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Jobs;
-using Unity.Mathematics;
 using UnityEngine;
 
 public struct Timer : IBufferElementData
 {
-    public float elapsedTime;
-    public float duration;
-    public bool running;
-    public bool started;
-    
-    public bool Started
-    {
-        set { started = value; }
-        get { return started; }
-    }
+    public float ElapsedTime;
+    private float m_duration;
+    public bool  Running;
+    public bool  Started;
+
     public float Duration
     {
-        get { return duration; }
-        set 
+        get => m_duration;
+        set
         {
-            if ( value > 0 && !Running )
-            {
-                duration = value;                 
-            }
+            if (value > 0 && !Running) m_duration = value;
         }
     }
-    public bool Finished
-    {
-        get { return Started && !Running; }
-    }
 
-    public bool Running
-    {
-        get { return running; }
-        set { running = value; }
-    }
-    
+    public bool Finished => Started && !Running;
+
     public void Run()
     {
-        elapsedTime = 0;
-        started = true;
-        running = true;
+        ElapsedTime = 0;
+        Started     = true;
+        Running     = true;
     }
+
     public void Stop()
     {
-        elapsedTime = 0;
-        started = false;
-        running = false;
+        ElapsedTime = 0;
+        Started     = false;
+        Running     = false;
     }
 }
 
@@ -58,29 +41,52 @@ public struct Timer : IBufferElementData
 // update each element in it.
 public class TimerSystem : JobComponentSystem
 {
-    private EntityQuery m_TimerGroup;
-   
+    private EntityQuery m_timerGroup;
+
+    protected override JobHandle OnUpdate(JobHandle inputDeps)
+    {
+        var chunks = m_timerGroup.CreateArchetypeChunkArray(Allocator.TempJob);
+
+        return new TimerUpdateJob
+        {
+            Chunks     = chunks,
+            TimersType = GetArchetypeChunkBufferType<Timer>(),
+            DeltaTime  = Time.deltaTime
+        }.Schedule(inputDeps);
+    }
+
+    protected override void OnCreate()
+    {
+        m_timerGroup = GetEntityQuery(new EntityQueryDesc
+        {
+            All = new ComponentType[]
+            {
+                typeof(Timer)
+            }
+        });
+    }
+
     public struct TimerUpdateJob : IJob
     {
-        [DeallocateOnJobCompletion]
-        public NativeArray<ArchetypeChunk> chunks;
-        public ArchetypeChunkBufferType<Timer> timersType;
-        public float deltaTime;
+        [DeallocateOnJobCompletion] public NativeArray<ArchetypeChunk>     Chunks;
+        public                             ArchetypeChunkBufferType<Timer> TimersType;
+        public                             float                           DeltaTime;
+
         public void Execute()
         {
             // how many chunks?
-            for (int i = 0; i < chunks.Length; i++)
+            for (var i = 0; i < Chunks.Length; i++)
             {
-                var chunk = chunks[i];
-                var timersAccessor = chunk.GetBufferAccessor<Timer>(timersType);
+                var chunk          = Chunks[i];
+                var timersAccessor = chunk.GetBufferAccessor(TimersType);
 
                 // I think chunk.Count == timersAccessor.Length == naArray<Archetype>.Length
                 // how many entities in this chunk?
-                for (int j = 0; j < chunk.Count; j++)
+                for (var j = 0; j < chunk.Count; j++)
                 {
                     var timers = timersAccessor[j];
                     // how many timer in Timers Array?
-                    for (int k = 0; k < timers.Length; k++)
+                    for (var k = 0; k < timers.Length; k++)
                     {
                         var copyTimer = timers[k];
                         //Debug.Log("not running");
@@ -89,42 +95,21 @@ public class TimerSystem : JobComponentSystem
                             //Debug.Log("running");
                             timers[k] = new Timer
                             {
-                                started = timers[k].started,
-                                running = timers[k].running,
-                                elapsedTime = timers[k].elapsedTime + deltaTime,
-                                duration = timers[k].duration,
+                                Started     = timers[k].Started,
+                                Running     = timers[k].Running,
+                                ElapsedTime = timers[k].ElapsedTime + DeltaTime,
+                                Duration    = timers[k].Duration
                             };
-                            if (copyTimer.elapsedTime > copyTimer.Duration)
-                            {
+                            if (copyTimer.ElapsedTime > copyTimer.Duration)
                                 timers[k] = new Timer
                                 {
-                                    running = false,
-                                    started = true,
+                                    Running = false,
+                                    Started = true
                                 };
-                            }
-                        }   
-                    }                    
+                        }
+                    }
                 }
-            }            
-        }
-    }
-
-    protected override JobHandle OnUpdate(JobHandle inputDeps)
-    {
-        var chunks = m_TimerGroup.CreateArchetypeChunkArray(Allocator.TempJob);
-
-        return new TimerUpdateJob{
-            chunks = chunks,
-            timersType = GetArchetypeChunkBufferType<Timer>(false),
-            deltaTime = Time.deltaTime,
-        }.Schedule(inputDeps);
-    }
-    protected override void OnCreate()
-    {
-        m_TimerGroup = GetEntityQuery(new EntityQueryDesc{
-            All = new ComponentType[] {
-                typeof(Timer),
             }
-        });
+        }
     }
 }

@@ -1,5 +1,4 @@
-﻿using Unity.Burst;
-using Unity.Collections;
+﻿using Unity.Collections;
 using Unity.Entities;
 using Unity.Jobs;
 using Unity.Mathematics;
@@ -20,36 +19,12 @@ namespace Samples.HelloCube_06
         // to run on the newly-spawned entities before they're rendered for the first time, the HelloSpawnerSystem
         // will use the BeginSimulationEntityCommandBufferSystem to play back its commands. This introduces a one-frame lag
         // between recording the commands and instantiating the entities, but in practice this is usually not noticeable.
-        BeginInitializationEntityCommandBufferSystem m_EntityCommandBufferSystem;
+        private BeginInitializationEntityCommandBufferSystem m_entityCommandBufferSystem;
 
         protected override void OnCreate()
         {
             // Cache the BeginInitializationEntityCommandBufferSystem in a field, so we don't have to create it every frame
-            m_EntityCommandBufferSystem = World.GetOrCreateSystem<BeginInitializationEntityCommandBufferSystem>();
-        }
-
-        struct SpawnJob : IJobForEachWithEntity<HelloSpawner, LocalToWorld>
-        {
-            public EntityCommandBuffer CommandBuffer;
-
-            public void Execute(Entity entity, int index, [ReadOnly] ref HelloSpawner spawner,
-                [ReadOnly] ref LocalToWorld location)
-            {
-                for (int x = 0; x < spawner.CountX; x++)
-                {
-                    for (int y = 0; y < spawner.CountY; y++)
-                    {
-                        var instance = CommandBuffer.Instantiate(spawner.Prefab);
-
-                        // Place the instantiated in a grid with some noise
-                        var position = math.transform(location.Value,
-                            new float3(x * 1.3F, noise.cnoise(new float2(x, y) * 0.21F) * 2, y * 1.3F));
-                        CommandBuffer.SetComponent(instance, new Translation {Value = position});
-                    }
-                }
-
-                CommandBuffer.DestroyEntity(entity);
-            }
+            m_entityCommandBufferSystem = World.GetOrCreateSystem<BeginInitializationEntityCommandBufferSystem>();
         }
 
         protected override JobHandle OnUpdate(JobHandle inputDeps)
@@ -60,16 +35,38 @@ namespace Samples.HelloCube_06
             // Schedule the job that will add Instantiate commands to the EntityCommandBuffer.
             var job = new SpawnJob
             {
-                CommandBuffer = m_EntityCommandBufferSystem.CreateCommandBuffer()
+                CommandBuffer = m_entityCommandBufferSystem.CreateCommandBuffer()
             }.ScheduleSingle(this, inputDeps);
 
 
             // SpawnJob runs in parallel with no sync point until the barrier system executes.
             // When the barrier system executes we want to complete the SpawnJob and then play back the commands (Creating the entities and placing them).
             // We need to tell the barrier system which job it needs to complete before it can play back the commands.
-            m_EntityCommandBufferSystem.AddJobHandleForProducer(job);
+            m_entityCommandBufferSystem.AddJobHandleForProducer(job);
 
             return job;
+        }
+
+        private struct SpawnJob : IJobForEachWithEntity<HelloSpawner, LocalToWorld>
+        {
+            public EntityCommandBuffer CommandBuffer;
+
+            public void Execute(Entity entity, int index, [ReadOnly] ref HelloSpawner spawner,
+                [ReadOnly] ref LocalToWorld location)
+            {
+                for (var x = 0; x < spawner.CountX; x++)
+                for (var y = 0; y < spawner.CountY; y++)
+                {
+                    var instance = CommandBuffer.Instantiate(spawner.Prefab);
+
+                    // Place the instantiated in a grid with some noise
+                    var position = math.transform(location.Value,
+                        new float3(x * 1.3F, noise.cnoise(new float2(x, y) * 0.21F) * 2, y * 1.3F));
+                    CommandBuffer.SetComponent(instance, new Translation {Value = position});
+                }
+
+                CommandBuffer.DestroyEntity(entity);
+            }
         }
     }
 }

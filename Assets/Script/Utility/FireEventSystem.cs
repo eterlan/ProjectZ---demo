@@ -16,7 +16,7 @@
 //         Entities.ForEach((Entity entity, ref ArrivedEventData eventData) =>
 //         {
 //             PostUpdateCommands.DestroyEntity(entity);
-            
+
 //         });
 //         // create event entity
 //         while (queue.TryDequeue(out ArrivedEventData eventData))
@@ -43,3 +43,4 @@
 // {
 //     public int EventData;
 // }
+

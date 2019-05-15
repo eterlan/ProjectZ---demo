@@ -1,5 +1,6 @@
 using Unity.Entities;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 public struct Quantity : IComponentData
 {
@@ -9,13 +10,13 @@ public struct Quantity : IComponentData
 [RequiresEntityConversion]
 public class QuantityProxy : MonoBehaviour, IConvertGameObjectToEntity
 {
-    public int Value;
+    [FormerlySerializedAs("Value")] public int value;
 
-    public void Convert( Entity entity, EntityManager manager, GameObjectConversionSystem conversionSystem)
+    public void Convert(Entity entity, EntityManager manager, GameObjectConversionSystem conversionSystem)
     {
         var data = new Quantity
         {
-            Value = Value,
+            Value = value
         };
         manager.AddComponentData(entity, data);
     }

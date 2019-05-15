@@ -24,34 +24,34 @@ namespace CubedsUnityShaders
             Transparent // Physically plausible transparency mode, implemented as alpha pre-multiply
         }
 
-        MaterialProperty blendMode;
-        MaterialProperty mainTexture;
-        MaterialProperty color;
-        MaterialProperty colorMask;
-        MaterialProperty shadow;
-        MaterialProperty outlineMode;
-        MaterialProperty outlineWidth;
-        MaterialProperty outlineColor;
-        MaterialProperty emissionMap;
-        MaterialProperty emissionColor;
-        MaterialProperty normalMap;
-        MaterialProperty alphaCutoff;
+        MaterialProperty m_blendMode;
+        MaterialProperty m_mainTexture;
+        MaterialProperty m_color;
+        MaterialProperty m_colorMask;
+        MaterialProperty m_shadow;
+        MaterialProperty m_outlineMode;
+        MaterialProperty m_outlineWidth;
+        MaterialProperty m_outlineColor;
+        MaterialProperty m_emissionMap;
+        MaterialProperty m_emissionColor;
+        MaterialProperty m_normalMap;
+        MaterialProperty m_alphaCutoff;
 
         public override void OnGUI(MaterialEditor materialEditor, MaterialProperty[] props)
         {
             { //Find Properties
-                blendMode = FindProperty("_Mode", props);
-                mainTexture = FindProperty("_MainTex", props);
-                color = FindProperty("_Color", props);
-                colorMask = FindProperty("_ColorMask", props);
-                shadow = FindProperty("_Shadow", props);
-                outlineMode = FindProperty("_OutlineMode", props);
-                outlineWidth = FindProperty("_outline_width", props);
-                outlineColor = FindProperty("_outline_color", props);
-                emissionMap = FindProperty("_EmissionMap", props);
-                emissionColor = FindProperty("_EmissionColor", props);
-                normalMap = FindProperty("_BumpMap", props);
-                alphaCutoff = FindProperty("_Cutoff", props);
+                m_blendMode = FindProperty("_Mode", props);
+                m_mainTexture = FindProperty("_MainTex", props);
+                m_color = FindProperty("_Color", props);
+                m_colorMask = FindProperty("_ColorMask", props);
+                m_shadow = FindProperty("_Shadow", props);
+                m_outlineMode = FindProperty("_OutlineMode", props);
+                m_outlineWidth = FindProperty("_outline_width", props);
+                m_outlineColor = FindProperty("_outline_color", props);
+                m_emissionMap = FindProperty("_EmissionMap", props);
+                m_emissionColor = FindProperty("_EmissionColor", props);
+                m_normalMap = FindProperty("_BumpMap", props);
+                m_alphaCutoff = FindProperty("_Cutoff", props);
             }
 
             Material material = materialEditor.target as Material;
@@ -61,17 +61,17 @@ namespace CubedsUnityShaders
 
                 EditorGUI.BeginChangeCheck();
                 {
-                    EditorGUI.showMixedValue = blendMode.hasMixedValue;
-                    var bMode = (BlendMode)blendMode.floatValue;
+                    EditorGUI.showMixedValue = m_blendMode.hasMixedValue;
+                    var bMode = (BlendMode)m_blendMode.floatValue;
 
                     EditorGUI.BeginChangeCheck();
                     bMode = (BlendMode)EditorGUILayout.Popup("Rendering Mode", (int)bMode, Enum.GetNames(typeof(BlendMode)));
                     if (EditorGUI.EndChangeCheck())
                     {
                         materialEditor.RegisterPropertyChangeUndo("Rendering Mode");
-                        blendMode.floatValue = (float)bMode;
+                        m_blendMode.floatValue = (float)bMode;
 
-                        foreach (var obj in blendMode.targets)
+                        foreach (var obj in m_blendMode.targets)
                         {
                             SetupMaterialWithBlendMode((Material)obj, (BlendMode)material.GetFloat("_Mode"));
                         }
@@ -80,23 +80,23 @@ namespace CubedsUnityShaders
                     EditorGUI.showMixedValue = false;
 
 
-                    materialEditor.TexturePropertySingleLine(new GUIContent("Main Texture", "Main Color Texture (RGB)"), mainTexture, color);
+                    materialEditor.TexturePropertySingleLine(new GUIContent("Main Texture", "Main Color Texture (RGB)"), m_mainTexture, m_color);
                     EditorGUI.indentLevel += 2;
                     if ((BlendMode)material.GetFloat("_Mode") == BlendMode.Cutout)
-                        materialEditor.ShaderProperty(alphaCutoff, "Alpha Cutoff", 2);
-                    materialEditor.TexturePropertySingleLine(new GUIContent("Color Mask", "Masks Color Tinting (G)"), colorMask);
+                        materialEditor.ShaderProperty(m_alphaCutoff, "Alpha Cutoff", 2);
+                    materialEditor.TexturePropertySingleLine(new GUIContent("Color Mask", "Masks Color Tinting (G)"), m_colorMask);
                     EditorGUI.indentLevel -= 2;
-                    materialEditor.TexturePropertySingleLine(new GUIContent("Normal Map", "Normal Map (RGB)"), normalMap);
-                    materialEditor.TexturePropertySingleLine(new GUIContent("Emission", "Emission (RGB)"), emissionMap, emissionColor);
+                    materialEditor.TexturePropertySingleLine(new GUIContent("Normal Map", "Normal Map (RGB)"), m_normalMap);
+                    materialEditor.TexturePropertySingleLine(new GUIContent("Emission", "Emission (RGB)"), m_emissionMap, m_emissionColor);
                     EditorGUI.BeginChangeCheck();
-                    materialEditor.TextureScaleOffsetProperty(mainTexture);
+                    materialEditor.TextureScaleOffsetProperty(m_mainTexture);
                     if (EditorGUI.EndChangeCheck())
-                        emissionMap.textureScaleAndOffset = mainTexture.textureScaleAndOffset;
+                        m_emissionMap.textureScaleAndOffset = m_mainTexture.textureScaleAndOffset;
 
                     EditorGUILayout.Space();
-                    materialEditor.ShaderProperty(shadow, "Shadow");
+                    materialEditor.ShaderProperty(m_shadow, "Shadow");
 
-                    var oMode = (OutlineMode)outlineMode.floatValue;
+                    var oMode = (OutlineMode)m_outlineMode.floatValue;
 
                     EditorGUI.BeginChangeCheck();
                     oMode = (OutlineMode)EditorGUILayout.Popup("Outline Mode", (int)oMode, Enum.GetNames(typeof(OutlineMode)));
@@ -104,9 +104,9 @@ namespace CubedsUnityShaders
                     if (EditorGUI.EndChangeCheck())
                     {
                         materialEditor.RegisterPropertyChangeUndo("Outline Mode");
-                        outlineMode.floatValue = (float)oMode;
+                        m_outlineMode.floatValue = (float)oMode;
 
-                        foreach (var obj in outlineMode.targets)
+                        foreach (var obj in m_outlineMode.targets)
                         {
                             SetupMaterialWithOutlineMode((Material)obj, (OutlineMode)material.GetFloat("_OutlineMode"));
                         }
@@ -116,8 +116,8 @@ namespace CubedsUnityShaders
                     {
                         case OutlineMode.Tinted:
                         case OutlineMode.Colored:
-                            materialEditor.ShaderProperty(outlineColor, "Color", 2);
-                            materialEditor.ShaderProperty(outlineWidth, new GUIContent("Width", "Outline Width in cm"), 2);
+                            materialEditor.ShaderProperty(m_outlineColor, "Color", 2);
+                            materialEditor.ShaderProperty(m_outlineWidth, new GUIContent("Width", "Outline Width in cm"), 2);
                             break;
                         case OutlineMode.None:
                         default:

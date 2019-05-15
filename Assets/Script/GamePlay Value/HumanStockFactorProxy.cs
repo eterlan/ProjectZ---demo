@@ -1,23 +1,25 @@
-using UnityEngine;
 using Unity.Entities;
+using UnityEngine;
+using UnityEngine.Serialization;
 
 public struct HumanStockFactor : IComponentData
 {
     public int Food;
     public int Water;
 }
+
 public class HumanStockFactorProxy : MonoBehaviour, IConvertGameObjectToEntity
 {
-    [Range(0,ConstValue.MaxFood)]
-    public int Food;
-    [Range(0,ConstValue.MaxWater)]
-    public int Water;
+    [FormerlySerializedAs("Food")] [Range(0, ConstValue.MaxFood)] public int food;
+
+    [FormerlySerializedAs("Water")] [Range(0, ConstValue.MaxWater)] public int water;
+
     public void Convert(Entity e, EntityManager manager, GameObjectConversionSystem conversionSystem)
     {
         var data = new HumanStockFactor
         {
-            Food  = Food,
-            Water = Water,
+            Food  = food,
+            Water = water
         };
         manager.AddComponentData(e, data);
     }

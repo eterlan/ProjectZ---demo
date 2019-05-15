@@ -21,7 +21,7 @@
 //     }
 //     protected override void OnCreate()
 //     {
-        
+
 //     }
 //     protected override void OnDestroy()
 //     {
@@ -32,3 +32,4 @@
 // // Conclusion : Each InitState would Initialize the the state or random. 
 // // So it would repeat again and again.
 // // You should init at OnCreate if that's not intented.
+

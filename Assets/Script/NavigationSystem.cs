@@ -1,212 +1,82 @@
-﻿using Unity.Collections;
+﻿using Unity.Burst;
+using Unity.Collections;
 using Unity.Entities;
 using Unity.Jobs;
 using Unity.Mathematics;
 using Unity.Transforms;
 using UnityEngine;
-using Unity.Burst;
-using System.Collections;
-using System.Collections.Generic;
 
-public class NavigationSystem : JobComponentSystem 
+public class NavigationSystem : JobComponentSystem
 {
-    private EntityQuery m_NPCHasNavigationTag;
-    private EntityQuery m_TreeGroup;
-    private EntityQuery m_HouseGroup;
-    //public EndSimulationEntityCommandBufferSystem commandBufferSystem;
-
-
-    [BurstCompile]
-    public struct CopyPositions : IJobForEachWithEntity<LocalToWorld>
-    {
-        public NativeArray<float3> positions;
-        public void Execute(Entity entity, int index, [ReadOnly]ref LocalToWorld localToWorld)
-        {
-            positions[index] = localToWorld.Position;
-            
-            // TEST = correct. index is group-specify
-            // indices[index] = index; 
-        }
-    }
-    [BurstCompile]
-    public struct CopyBehaviourTargets : IJobForEachWithEntity<BehaviourType>
-    {
-        public NativeArray<BehaviourTypes> behaviourTargets;
-        public void Execute(Entity entity, int index, [ReadOnly]ref BehaviourType behaviourTarget)
-        {
-            behaviourTargets[index] = behaviourTarget.Behaviour;
-        }
-    }
-
-    [BurstCompile]
-    public struct FindClosestTarget : IJobForEachWithEntity<Translation>
-    {
-        [DeallocateOnJobCompletion]
-        public NativeArray<int> targetIndices;
-        [DeallocateOnJobCompletion]
-        public NativeArray<float3> targetPositions;
-        public NativeArray<float> targetDistances;
-        public NativeArray<float3> targetDir_Nors;
-        [DeallocateOnJobCompletion]
-        [ReadOnly] public NativeArray<float3> TreePositions;
-        [DeallocateOnJobCompletion]
-        [ReadOnly] public NativeArray<float3> HousePositions;
-        [DeallocateOnJobCompletion]
-        [ReadOnly] public NativeArray<BehaviourTypes> behaviourTargets; // use enum?
-
-        void ClosestTarget(NativeArray<float3> Positions, float3 selfPosition, out int closestIndex, out float closestDistance, out float3 closestDir_Nor)
-        {
-            closestIndex   = 0;
-            closestDistance = math.lengthsq(Positions[0] - selfPosition);
-            for (int i = 0; i < Positions.Length; i++)
-            {
-                var target     = Positions[i];
-                var distance   = math.lengthsq(target - selfPosition);
-                var nearest    = distance < closestDistance;
-
-                closestIndex     = math.select(closestIndex, i, nearest);
-                closestDistance  = math.select(closestDistance, distance, nearest);
-            }
-            closestDistance  = math.sqrt(closestDistance);
-            var closestDir   = Positions[closestIndex] - selfPosition;
-            closestDir_Nor   = math.normalizesafe(closestDir);
-        }
-
-        public void Execute(Entity entity, int index, [ReadOnly] ref Translation translation)
-        {
-            // WAIT FOR TEST --- DONE ---
-            // targetTypes[0] = 0;
-            // targetTypes[1] = 1;
-            // targetTypes[2] = 1;
-            // targetTypes[3] = 0;
-
-            float3 targetPosition   = float3.zero;
-            var selfPosition       = translation.Value;
-            var behaviourTarget    = behaviourTargets[index];
-
-            //Default = Tree
-            var Positions          = TreePositions;
-            switch (behaviourTarget)
-            {
-                case BehaviourTypes.Eat :{
-                    Positions = HousePositions;
-                    break;
-                }
-                case BehaviourTypes.Drink :{
-                    Positions = TreePositions;
-                    break;
-                }               
-            }
-            if (Positions.Length > 0)
-            {
-                ClosestTarget(Positions, selfPosition, out int targetIndex, out float targetDistance, out float3 targetDir_Nor);
-                targetIndices[index]   = targetIndex;
-                targetDistances[index] = targetDistance;
-                targetPositions[index] = Positions[targetIndex];    
-                targetDir_Nors[index]  = targetDir_Nor;
-            }               
-        }
-    }
-
-    [BurstCompile]
-    public struct Movement : IJobForEachWithEntity<Translation, MovementSpeed,Rotation, NavigationTag>
-    {
-        public float DeltaTime;
-        [DeallocateOnJobCompletion]
-        [ReadOnly] public NativeArray<float3> targetDir_Nors;
-        [DeallocateOnJobCompletion]
-        [ReadOnly] public NativeArray<float>  targetDistances;
-        //public EntityCommandBuffer.Concurrent commandBuffer;
-
-        public void Execute(Entity entity, int index, ref Translation Translation, [ReadOnly] ref MovementSpeed movementSpeed,ref Rotation Rotation, ref NavigationTag navigationTag)
-        {
-            if (!navigationTag.Arrived)
-            {
-                var speed               =   DeltaTime * movementSpeed.Speed;
-                var targetDir_Nor       =   targetDir_Nors[index];
-                var position            =   Translation.Value;
-                var movePosition        =   position + targetDir_Nor*speed;//direction_normalize * speed;
-
-                //hard-code, might change it to radius later?
-                var keepPosition        =   0.5f;
-                var Arrived             =   targetDistances[index] < keepPosition;
-                //If has other component, you cannot assign Value to LTW.
-                Translation.Value       =   movePosition;//math.select(movePosition, position, tooClose);
-                Rotation.Value          =   quaternion.LookRotationSafe(targetDir_Nor, math.up());
-
-                // if (Arrived)               commandBuffer.RemoveComponent<NavigationTag>(index,entity);
-                if (Arrived)               
-                    navigationTag.Arrived = true;
-            }
-            
-
-        }
-    }
+    private EntityQuery m_houseGroup;
+    private EntityQuery m_npcHasNavigationTag;
+    private EntityQuery m_treeGroup;
 
     protected override JobHandle OnUpdate(JobHandle inputDependency)
     {
-        var treeCount = m_TreeGroup.CalculateLength();
-        var NPCCount  = m_NPCHasNavigationTag.CalculateLength();
-        var HouseCount = m_HouseGroup.CalculateLength();
-        
+        var treeCount  = m_treeGroup.CalculateLength();
+        var npcCount   = m_npcHasNavigationTag.CalculateLength();
+        var houseCount = m_houseGroup.CalculateLength();
+
         // Tree Group
-        var copyTreePositions = new NativeArray<float3>(treeCount, Allocator.TempJob); 
-        
+        var copyTreePositions = new NativeArray<float3>(treeCount, Allocator.TempJob);
+
         // House Group
-        var copyHousePositions = new NativeArray<float3>(HouseCount, Allocator.TempJob);
+        var copyHousePositions = new NativeArray<float3>(houseCount, Allocator.TempJob);
 
         // NPC Group
-        var targetDistances   = new NativeArray<float>(NPCCount,Allocator.TempJob);
-        var targetPositions   = new NativeArray<float3>(NPCCount,Allocator.TempJob);
-        var targetIndices     = new NativeArray<int>(NPCCount, Allocator.TempJob);
-        var targetDir_Nors    = new NativeArray<float3>(NPCCount, Allocator.TempJob);
-        var behaviourTargets  = new NativeArray<BehaviourTypes>(NPCCount,Allocator.TempJob);
-       
+        var targetDistances  = new NativeArray<float>(npcCount, Allocator.TempJob);
+        var targetPositions  = new NativeArray<float3>(npcCount, Allocator.TempJob);
+        var targetIndices    = new NativeArray<int>(npcCount, Allocator.TempJob);
+        var targetDirNors   = new NativeArray<float3>(npcCount, Allocator.TempJob);
+        var behaviourTargets = new NativeArray<BehaviourTypes>(npcCount, Allocator.TempJob);
+
         // What to do if there is two job to schedule? Combine?
-        CopyPositions CopyTreePositionsJob = new CopyPositions
+        var copyTreePositionsJob = new CopyPositions
         {
-            positions = copyTreePositions,
-        };     
-        var CopyTreePositionsJobHandle = CopyTreePositionsJob.Schedule(m_TreeGroup, inputDependency);
-
-        CopyPositions CopyHousePositionsJob = new CopyPositions
-        {
-            positions = copyHousePositions,
+            Positions = copyTreePositions
         };
-        var copyHousePositionsJobHandle   = CopyHousePositionsJob.Schedule(m_HouseGroup, inputDependency);
+        var copyTreePositionsJobHandle = copyTreePositionsJob.Schedule(m_treeGroup, inputDependency);
 
-        CopyBehaviourTargets copyBehaviourTargetsJob = new CopyBehaviourTargets
+        var copyHousePositionsJob = new CopyPositions
         {
-            behaviourTargets = behaviourTargets,
+            Positions = copyHousePositions
         };
-        var copyBehaviourTargetsJobHandle = copyBehaviourTargetsJob.Schedule(m_NPCHasNavigationTag, inputDependency);
+        var copyHousePositionsJobHandle = copyHousePositionsJob.Schedule(m_houseGroup, inputDependency);
 
-        var CopyTargetAndPositionsBarrierJobHandle = JobHandle.CombineDependencies(CopyTreePositionsJobHandle,copyHousePositionsJobHandle,copyBehaviourTargetsJobHandle);
-
-        FindClosestTarget findtargetJob = new FindClosestTarget
+        var copyBehaviourTargetsJob = new CopyBehaviourTargets
         {
-            TreePositions    = copyTreePositions,
-            HousePositions   = copyHousePositions,
-            
-            targetDistances  = targetDistances,
-            targetIndices    = targetIndices,
-            targetPositions  = targetPositions,
-            targetDir_Nors   = targetDir_Nors,
-            behaviourTargets = behaviourTargets,
+            BehaviourTargets = behaviourTargets
         };
-        var FindTargetJobHandle = findtargetJob.Schedule(m_NPCHasNavigationTag, CopyTargetAndPositionsBarrierJobHandle);     
-        Movement MovementJob = new Movement
+        var copyBehaviourTargetsJobHandle = copyBehaviourTargetsJob.Schedule(m_npcHasNavigationTag, inputDependency);
+
+        var copyTargetAndPositionsBarrierJobHandle = JobHandle.CombineDependencies(copyTreePositionsJobHandle,
+            copyHousePositionsJobHandle, copyBehaviourTargetsJobHandle);
+
+        var findtargetJob = new FindClosestTarget
+        {
+            TreePositions  = copyTreePositions,
+            HousePositions = copyHousePositions,
+
+            TargetDistances  = targetDistances,
+            TargetIndices    = targetIndices,
+            TargetPositions  = targetPositions,
+            TargetDirNors   = targetDirNors,
+            BehaviourTargets = behaviourTargets
+        };
+        var findTargetJobHandle = findtargetJob.Schedule(m_npcHasNavigationTag, copyTargetAndPositionsBarrierJobHandle);
+        var movementJob = new Movement
         {
             DeltaTime       = Time.deltaTime,
-            targetDir_Nors  = targetDir_Nors,
-            targetDistances = targetDistances,
+            TargetDirNors  = targetDirNors,
+            TargetDistances = targetDistances
             //commandBuffer   = commandBufferSystem.CreateCommandBuffer().ToConcurrent(),
         };
-        var MovementJobHandle = MovementJob.Schedule(m_NPCHasNavigationTag, FindTargetJobHandle);
+        var movementJobHandle = movementJob.Schedule(m_npcHasNavigationTag, findTargetJobHandle);
 
-        inputDependency       = MovementJobHandle;
+        inputDependency = movementJobHandle;
         //Why add dependency to Group?
-        m_NPCHasNavigationTag.AddDependency(inputDependency);
+        m_npcHasNavigationTag.AddDependency(inputDependency);
 
         //TEST
         // LoopDebug(copyTreePositions);
@@ -219,49 +89,176 @@ public class NavigationSystem : JobComponentSystem
 
     public void LoopDebug(NativeArray<float3> inputArray)
     {
-        for (int i = 0; i < inputArray.Length; i++)
-        {
-            Debug.Log($"Array[{i}] = {inputArray[i]}");
-        }
-    } 
+        for (var i = 0; i < inputArray.Length; i++) Debug.Log($"Array[{i}] = {inputArray[i]}");
+    }
+
     public void LoopDebug(NativeArray<int> inputArray)
     {
-        for (int i = 0; i < inputArray.Length; i++)
-        {
-            Debug.Log($"Array[{i}] = {inputArray[i]}");
-        }
+        for (var i = 0; i < inputArray.Length; i++) Debug.Log($"Array[{i}] = {inputArray[i]}");
     }
 
     protected override void OnCreateManager()
     {
         //commandBufferSystem   = World.GetOrCreateManager<EndSimulationEntityCommandBufferSystem>();
-        m_NPCHasNavigationTag = GetEntityQuery(new EntityQueryDesc
+        m_npcHasNavigationTag = GetEntityQuery(new EntityQueryDesc
         {
-            All = new []
+            All = new[]
             {
                 ComponentType.ReadOnly<Npc>(),
                 ComponentType.ReadWrite<Translation>(),
                 ComponentType.ReadWrite<Rotation>(),
                 ComponentType.ReadOnly<MovementSpeed>(),
                 ComponentType.ReadOnly<BehaviourType>(),
-                ComponentType.ReadOnly<NavigationTag>(),
+                ComponentType.ReadOnly<NavigationTag>()
             }
         });
-        m_TreeGroup = GetEntityQuery(new EntityQueryDesc
+        m_treeGroup = GetEntityQuery(new EntityQueryDesc
         {
-            All = new []
+            All = new[]
             {
                 ComponentType.ReadOnly<Tree>(),
-                ComponentType.ReadOnly<LocalToWorld>(), // static object doesn't has Translation component ?
+                ComponentType.ReadOnly<LocalToWorld>() // static object doesn't has Translation component ?
             }
         });
-        m_HouseGroup = GetEntityQuery(new EntityQueryDesc
+        m_houseGroup = GetEntityQuery(new EntityQueryDesc
         {
-            All = new []
+            All = new[]
             {
                 ComponentType.ReadOnly<House>(),
-                ComponentType.ReadOnly<LocalToWorld>(),
+                ComponentType.ReadOnly<LocalToWorld>()
             }
         });
+    }
+    //public EndSimulationEntityCommandBufferSystem commandBufferSystem;
+
+
+    [BurstCompile]
+    public struct CopyPositions : IJobForEachWithEntity<LocalToWorld>
+    {
+        public NativeArray<float3> Positions;
+
+        public void Execute(Entity entity, int index, [ReadOnly] ref LocalToWorld localToWorld)
+        {
+            Positions[index] = localToWorld.Position;
+
+            // TEST = correct. index is group-specify
+            // indices[index] = index; 
+        }
+    }
+
+    [BurstCompile]
+    public struct CopyBehaviourTargets : IJobForEachWithEntity<BehaviourType>
+    {
+        public NativeArray<BehaviourTypes> BehaviourTargets;
+
+        public void Execute(Entity entity, int index, [ReadOnly] ref BehaviourType behaviourTarget)
+        {
+            BehaviourTargets[index] = behaviourTarget.Behaviour;
+        }
+    }
+
+    [BurstCompile]
+    public struct FindClosestTarget : IJobForEachWithEntity<Translation>
+    {
+        [DeallocateOnJobCompletion] public            NativeArray<int>            TargetIndices;
+        [DeallocateOnJobCompletion] public            NativeArray<float3>         TargetPositions;
+        public                                        NativeArray<float>          TargetDistances;
+        public                                        NativeArray<float3>         TargetDirNors;
+        [DeallocateOnJobCompletion] [ReadOnly] public NativeArray<float3>         TreePositions;
+        [DeallocateOnJobCompletion] [ReadOnly] public NativeArray<float3>         HousePositions;
+        [DeallocateOnJobCompletion] [ReadOnly] public NativeArray<BehaviourTypes> BehaviourTargets; // use enum?
+
+        private void ClosestTarget(NativeArray<float3> positions, float3 selfPosition, out int closestIndex,
+            out float closestDistance, out float3 closestDirNor)
+        {
+            closestIndex    = 0;
+            closestDistance = math.lengthsq(positions[0] - selfPosition);
+            for (var i = 0; i < positions.Length; i++)
+            {
+                var target   = positions[i];
+                var distance = math.lengthsq(target - selfPosition);
+                var nearest  = distance < closestDistance;
+
+                closestIndex    = math.select(closestIndex, i, nearest);
+                closestDistance = math.select(closestDistance, distance, nearest);
+            }
+
+            closestDistance = math.sqrt(closestDistance);
+            var closestDir = positions[closestIndex] - selfPosition;
+            closestDirNor = math.normalizesafe(closestDir);
+        }
+
+        public void Execute(Entity entity, int index, [ReadOnly] ref Translation translation)
+        {
+            // WAIT FOR TEST --- DONE ---
+            // targetTypes[0] = 0;
+            // targetTypes[1] = 1;
+            // targetTypes[2] = 1;
+            // targetTypes[3] = 0;
+
+            var targetPosition  = float3.zero;
+            var selfPosition    = translation.Value;
+            var behaviourTarget = BehaviourTargets[index];
+
+            //Default = Tree
+            var positions = TreePositions;
+            switch (behaviourTarget)
+            {
+                case BehaviourTypes.Eat:
+                {
+                    positions = HousePositions;
+                    break;
+                }
+
+                case BehaviourTypes.Drink:
+                {
+                    positions = TreePositions;
+                    break;
+                }
+            }
+
+            if (positions.Length > 0)
+            {
+                ClosestTarget(positions, selfPosition, out var targetIndex, out var targetDistance,
+                    out var targetDirNor);
+                TargetIndices[index]   = targetIndex;
+                TargetDistances[index] = targetDistance;
+                TargetPositions[index] = positions[targetIndex];
+                TargetDirNors[index]  = targetDirNor;
+            }
+        }
+    }
+
+    [BurstCompile]
+    public struct Movement : IJobForEachWithEntity<Translation, MovementSpeed, Rotation, NavigationTag>
+    {
+        public                                        float               DeltaTime;
+        [DeallocateOnJobCompletion] [ReadOnly] public NativeArray<float3> TargetDirNors;
+
+        [DeallocateOnJobCompletion] [ReadOnly] public NativeArray<float> TargetDistances;
+        //public EntityCommandBuffer.Concurrent commandBuffer;
+
+        public void Execute(Entity entity, int index, ref Translation translation,
+            [ReadOnly] ref MovementSpeed movementSpeed, ref Rotation rotation, ref NavigationTag navigationTag)
+        {
+            if (!navigationTag.Arrived)
+            {
+                var speed         = DeltaTime * movementSpeed.Speed;
+                var targetDirNor = TargetDirNors[index];
+                var position      = translation.Value;
+                var movePosition  = position + targetDirNor * speed; //direction_normalize * speed;
+
+                //hard-code, might change it to radius later?
+                var keepPosition = 0.5f;
+                var arrived      = TargetDistances[index] < keepPosition;
+                //If has other component, you cannot assign Value to LTW.
+                translation.Value = movePosition; //math.select(movePosition, position, tooClose);
+                rotation.Value    = quaternion.LookRotationSafe(targetDirNor, math.up());
+
+                // if (Arrived)               commandBuffer.RemoveComponent<NavigationTag>(index,entity);
+                if (arrived)
+                    navigationTag.Arrived = true;
+            }
+        }
     }
 }

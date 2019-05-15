@@ -1,9 +1,8 @@
-using UnityEngine;
 using Unity.Entities;
+using UnityEngine;
 
 public struct House : IComponentData
 {
-    
 }
 
 public class HouseProxy : MonoBehaviour, IConvertGameObjectToEntity

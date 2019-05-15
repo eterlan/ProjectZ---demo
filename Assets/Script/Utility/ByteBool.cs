@@ -28,7 +28,7 @@
 //         }
 //         return obj is ByteBool && Equals((ByteBool)obj);
 //     }
- 
+
 //     public override int GetHashCode() {
 //         return this.value.GetHashCode();
 //     }
@@ -41,7 +41,7 @@
 //     public static implicit operator ByteBool(bool value) {
 //         return new ByteBool(value);
 //     }
-     
+
 //     /// <summary>
 //     /// Converts a ByteBool to a bool
 //     /// </summary>
@@ -51,3 +51,4 @@
 //         return source.Value;
 //     }
 // }
+

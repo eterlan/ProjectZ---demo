@@ -1,8 +1,7 @@
-using UnityEngine;
 using Unity.Entities;
 
 [InternalBufferCapacity(10)]
-public struct Item : ISystemStateBufferElementData
+public struct Items : ISystemStateBufferElementData
 {
     public Entity Value;
 }

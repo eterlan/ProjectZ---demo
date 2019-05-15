@@ -27,7 +27,7 @@
 //             Debug.Log("Sth happen");
 //         }
 //     }
-    
+
 //     protected override void OnCreateManager()
 //     {
 //         m_Listener = GetEntityQuery(new EntityQueryDesc{
@@ -36,5 +36,6 @@
 //             }
 //         });
 //     }
-    
+
 // }
+

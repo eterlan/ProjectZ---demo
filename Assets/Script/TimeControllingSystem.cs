@@ -1,15 +1,53 @@
-using Unity.Entities;
-using UnityEngine;
 using Unity.Burst;
+using Unity.Entities;
 using Unity.Jobs;
 using Unity.Mathematics;
-using System;
-using Unity.Collections;
+using UnityEngine;
 
 public class TimeControllingSystem : JobComponentSystem
 {
-    EntityQuery m_HumanGroup;
-    EntityQuery m_TimerGroup;
+    private EntityQuery m_humanGroup;
+    private EntityQuery m_timerGroup;
+
+    protected override JobHandle OnUpdate(JobHandle inputDependency)
+    {
+        var deltaTime = Time.deltaTime;
+        var recordTimeJob = new RecordTime
+        {
+            DeltaTime = deltaTime
+        };
+        var recordTimeJobHandle = recordTimeJob.Schedule(m_humanGroup, inputDependency);
+
+        // var RunTimerJob = new RunTimer
+        // {
+        //     deltaTime = deltaTime,
+        // };
+        // var RunTimerJobHandle = RunTimerJob.Schedule(m_TimerGroup, inputDependency);
+
+        //var TimeJobHandleBarrier = JobHandle.CombineDependencies( RecordTimeJobHandle, RunTimerJobHandle );
+
+        inputDependency = recordTimeJobHandle;
+        return inputDependency;
+    }
+
+    protected override void OnCreateManager()
+    {
+        m_humanGroup = GetEntityQuery(new EntityQueryDesc
+        {
+            All = new[]
+            {
+                ComponentType.ReadWrite<TimeRecord>(),
+                ComponentType.ReadOnly<HumanStateFactor>(),
+                ComponentType.ReadOnly<HumanStockFactor>()
+            }
+        });
+        // m_TimerGroup = GetEntityQuery( new EntityArchetypeQuery {
+        //     All =  new[] {
+        //         ComponentType.ReadWrite<Timers>(),
+        //     }
+        // });
+    }
+
     // public struct RunTimer : IJobForEach<Timers>
     // {
     //     public float deltaTime;
@@ -28,79 +66,46 @@ public class TimeControllingSystem : JobComponentSystem
     [BurstCompile]
     public struct RecordTime : IJobForEach<TimeRecord>
     {
-        public float deltaTime;
+        public float DeltaTime;
 
         public void Execute(ref TimeRecord time)
         {
-            time.Real_ElapsedTimeInSecond += deltaTime;
+            time.RealElapsedTimeInSecond += DeltaTime;
 
             // If it's 0, use 1 instead.
-            math.select(time.Modified_TimeElapsedSpeed , 1, time.Modified_TimeElapsedSpeed == 0);
-            
-            time.Game_ElapsedTimeInSecond += deltaTime * time.Default_TimeElapsedSpeed * time.Modified_TimeElapsedSpeed;
+            math.select(time.ModifiedTimeElapsedSpeed, 1, time.ModifiedTimeElapsedSpeed == 0);
 
-            if ( time.Game_ElapsedTimeInSecond >= 60 )
+            time.GameElapsedTimeInSecond += DeltaTime * time.DefaultTimeElapsedSpeed * time.ModifiedTimeElapsedSpeed;
+
+            if (time.GameElapsedTimeInSecond >= 60)
             {
-                time.Game_ElapsedTimeInSecond = 0;
-                time.Game_ElapsedTimeInMinute += 1;
-            }
-            if ( time.Game_ElapsedTimeInMinute >= 60 )
-            {
-                time.Game_ElapsedTimeInMinute = 0;
-                time.Game_ElapsedTimeInHour   += 1;
-            }
-            if ( time.Game_ElapsedTimeInHour >= 24)
-            {
-                time.Game_ElapsedTimeInHour = 0;
-                time.Game_ElapsedTimeInDay += 1;
-            }
-            if ( time.Game_ElapsedTimeInDay >= 30)
-            {
-                time.Game_ElapsedTimeInDay = 0;
-                time.Game_ElapsedTimeInMonth += 1;
-            }
-            if (time.Game_ElapsedTimeInMonth >= 1)
-            {
-                time.Game_ElapsedTimeInMonth = 0;
-                time.Game_ElapsedTimeInYear += 1;
+                time.GameElapsedTimeInSecond =  0;
+                time.GameElapsedTimeInMinute += 1;
             }
 
+            if (time.GameElapsedTimeInMinute >= 60)
+            {
+                time.GameElapsedTimeInMinute =  0;
+                time.GameElapsedTimeInHour   += 1;
+            }
+
+            if (time.GameElapsedTimeInHour >= 24)
+            {
+                time.GameElapsedTimeInHour =  0;
+                time.GameElapsedTimeInDay  += 1;
+            }
+
+            if (time.GameElapsedTimeInDay >= 30)
+            {
+                time.GameElapsedTimeInDay   =  0;
+                time.GameElapsedTimeInMonth += 1;
+            }
+
+            if (time.GameElapsedTimeInMonth >= 1)
+            {
+                time.GameElapsedTimeInMonth =  0;
+                time.GameElapsedTimeInYear  += 1;
+            }
         }
-    }
-
-    protected override JobHandle OnUpdate(JobHandle inputDependency)
-    {
-        var deltaTime = Time.deltaTime;
-        var RecordTimeJob = new RecordTime
-        {
-            deltaTime = deltaTime,
-        };
-        var RecordTimeJobHandle = RecordTimeJob.Schedule(m_HumanGroup, inputDependency);
-
-        // var RunTimerJob = new RunTimer
-        // {
-        //     deltaTime = deltaTime,
-        // };
-        // var RunTimerJobHandle = RunTimerJob.Schedule(m_TimerGroup, inputDependency);
-
-        //var TimeJobHandleBarrier = JobHandle.CombineDependencies( RecordTimeJobHandle, RunTimerJobHandle );
-        
-        inputDependency = RecordTimeJobHandle;
-        return inputDependency;
-    }
-    protected override void OnCreateManager()
-    {
-        m_HumanGroup = GetEntityQuery( new EntityQueryDesc {
-            All = new[] {
-                ComponentType.ReadWrite<TimeRecord>(),
-                ComponentType.ReadOnly<HumanStateFactor>(),
-                ComponentType.ReadOnly<HumanStockFactor>(),
-            },
-        });
-        // m_TimerGroup = GetEntityQuery( new EntityArchetypeQuery {
-        //     All =  new[] {
-        //         ComponentType.ReadWrite<Timers>(),
-        //     }
-        // });
     }
 }

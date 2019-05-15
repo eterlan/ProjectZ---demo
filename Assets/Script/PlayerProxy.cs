@@ -3,7 +3,6 @@ using UnityEngine;
 
 public struct Player : IComponentData
 {
-
 }
 
 //
@@ -13,5 +12,7 @@ public class PlayerProxy : MonoBehaviour, IConvertGameObjectToEntity
     {
         var data = new Player();
         manager.AddComponentData(entity, data);
+        manager.AddBuffer<Items>(entity);
+        // cannot be singleton because the component in entity is not singleton. It's same with NPC
     }
 }

@@ -1,6 +1,6 @@
-using System;
 using Unity.Entities;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 public struct MovementSpeed : IComponentData
 {
@@ -14,10 +14,11 @@ public struct MovementSpeed : IComponentData
 // else it can't be added to inspector
 public class MovementSpeedProxy : MonoBehaviour, IConvertGameObjectToEntity
 {
-    public float MetersPerSecond;
+    [FormerlySerializedAs("MetersPerSecond")] public float metersPerSecond;
+
     public void Convert(Entity entity, EntityManager manager, GameObjectConversionSystem conversionSystem)
     {
-        var MovementSpeed = new MovementSpeed { Speed = MetersPerSecond };
-        manager.AddComponentData(entity, MovementSpeed);
+        var movementSpeed = new MovementSpeed {Speed = metersPerSecond};
+        manager.AddComponentData(entity, movementSpeed);
     }
 }

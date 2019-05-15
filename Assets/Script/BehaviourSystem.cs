@@ -1,31 +1,123 @@
-using Unity.Entities;
-using UnityEngine;
-using Unity.Burst;
-using Unity.Jobs;
-using Unity.Collections;
-using Unity.Mathematics;
 using System.Collections.Generic;
-using Unity.Transforms;
+using Unity.Collections;
+using Unity.Entities;
+using Unity.Jobs;
 
 public class BehaviourSystem : JobComponentSystem
 {
-    private bool IsInitialize = false;
-    public EntityQuery m_ExecuteBehaviourGroup;
-    private List<BehaviourValue> m_UniqueType = new List<BehaviourValue>(5);
-    
-    // For add Timer purpose.
-    public EntityQuery m_BeforeAdded;
+    private bool m_isInitialize;
 
-    
+    // For add Timer purpose.
+    private           EntityQuery          m_beforeAdded;
+    private           EntityQuery          m_executeBehaviourGroup;
+    private readonly List<BehaviourValue> m_uniqueType = new List<BehaviourValue>(5);
+
+    protected override JobHandle OnUpdate(JobHandle inputDependency)
+    {
+        if (!m_isInitialize)
+        {
+            m_isInitialize = true;
+
+            //Interesting, gather info of entity cannot be allocate with temp memory because it's a job inside.
+            
+            var entities = m_beforeAdded.ToEntityArray(Allocator.TempJob);
+            //Debug.Log(Entities.Length);
+            for (var i = 0; i < entities.Length; i++)
+            {
+                EntityManager.AddBuffer<Timer>(entities[i]);
+                var timers = EntityManager.GetBuffer<Timer>(entities[i]);
+                timers.Add(new Timer());
+                //Debug.Log(Timers.Length);
+            }
+
+            entities.Dispose();
+        }
+
+        var timersAccssor = GetBufferFromEntity<Timer>();
+
+        EntityManager.GetAllUniqueSharedComponentData(m_uniqueType);
+
+
+        // index0 has each value 0. 
+        // For now I have nothing special in value, so just use 1.
+        var settings = m_uniqueType[1];
+
+        // iterate this way might be faster..
+        m_executeBehaviourGroup.SetFilter(settings);
+
+        var processFactorJob = new ProcessFactor
+        {
+            TimersAccssor = timersAccssor,
+            Settings      = settings
+        };
+        var processFactorJobHandle = processFactorJob.Schedule(m_executeBehaviourGroup, inputDependency);
+        m_uniqueType.Clear();
+
+        // // TEST
+        // test_directly = HumanStateFactor.MaxValue[1];
+        // Debug.Log(test[0]+"aaa"+test.Length);
+        // Debug.Log("Inupdate"+test_directly);
+
+        inputDependency = processFactorJobHandle;
+        return inputDependency;
+    }
+
+    // TEST
+    // public void LoopDebug(NativeArray<Entity> array)
+    // {
+    //     for (int i = 0; i < array.Length; i++)
+    //     {
+    //         var hasComponent = EntityManager.HasComponent<Timer<BehaviourValue>>(array[i]);
+    //         Debug.Log($"Array[{i}] = {hasComponent}");
+    //     }
+    // } 
+
+
+    protected override void OnCreateManager()
+    {
+        // valid. 
+        // so, use struct or anything else to initialize array? fixed array? how to use ISharedComponentData?
+        // test = new NativeArray<int>(HumanStateFactor.MaxValue,Allocator.Persistent);
+
+        // test[0] = 10;
+        m_beforeAdded = GetEntityQuery(new EntityQueryDesc
+        {
+            All = new[]
+            {
+                ComponentType.ReadOnly<BehaviourType>(),
+                ComponentType.ReadOnly<BehaviourValue>(),
+                ComponentType.ReadWrite<HumanStateFactor>(),
+                ComponentType.ReadWrite<HumanStockFactor>(),
+                ComponentType.ReadOnly<NavigationTag>()
+                // is it possible RO?
+            }
+        });
+        // Cannot get manager in OnCreateManager?
+        m_executeBehaviourGroup = GetEntityQuery(new EntityQueryDesc
+        {
+            All = new[]
+            {
+                ComponentType.ReadOnly<BehaviourType>(),
+                ComponentType.ReadOnly<BehaviourValue>(),
+                ComponentType.ReadWrite<HumanStateFactor>(),
+                ComponentType.ReadWrite<HumanStockFactor>(),
+                ComponentType.ReadOnly<NavigationTag>(),
+                // is it possible RO? yes.. that might be a problem
+                ComponentType.ReadWrite<Timer>()
+            }
+        });
+    }
+
+
     // Problem with NativeArray, if you need to deal with data within different system, you have to put it back to component.
     [RequireComponentTag(typeof(BehaviourValue))]
     //[BurstCompile]
-    public struct ProcessFactor : IJobForEachWithEntity<HumanStateFactor, HumanStockFactor, BehaviourType, NavigationTag>
+    public struct
+        ProcessFactor : IJobForEachWithEntity<HumanStateFactor, HumanStockFactor, BehaviourType, NavigationTag>
     {
-        [NativeDisableParallelForRestriction]
-        public BufferFromEntity<Timer> timersAccssor;
-        [ReadOnly] public BehaviourValue settings;
-        
+        [NativeDisableParallelForRestriction] public BufferFromEntity<Timer> TimersAccssor;
+        [ReadOnly]                            public BehaviourValue          Settings;
+
         // Various behaviour has different effect.
         private void CalculateBehaviourEffect(ref int gainFactor, ref int payFactor, int gainValue, int payValue)
         {
@@ -33,12 +125,14 @@ public class BehaviourSystem : JobComponentSystem
             payFactor  -= payValue;
         }
 
-        private void PrepareValueForBehaviour(BehaviourTypes behaviourTypes, BehaviourValue behaviourValue, HumanStateFactor stateFactor,  HumanStockFactor stockFactor, out int gainValue, out int payValue, out int coolDownTime)
+        private void PrepareValueForBehaviour(BehaviourTypes behaviourTypes, BehaviourValue behaviourValue,
+            HumanStateFactor stateFactor, HumanStockFactor stockFactor, out int gainValue, out int payValue,
+            out int coolDownTime)
         {
             switch (behaviourTypes)
             {
                 case BehaviourTypes.Eat:
-                    gainValue = settings.EatGain;
+                    gainValue = Settings.eatGain;
                     // 
                     // gainFactorIndex = gainFactorIndexes[behaviourType]
                     // costFactorIndex = costFactorIndexes[behaviourType]
@@ -46,34 +140,38 @@ public class BehaviourSystem : JobComponentSystem
                     // CostFactor = Factors[costFactorIndex] (buffer)
                     // GainValue = settings.Values[behaviourType][ItemIndex];
                     // or? FoodGainValue = settings.foods[foodIndex]
-                    payValue = settings.EatCost;
-                    coolDownTime = settings.EatCoolDownInMinute;
+                    payValue     = Settings.eatCost;
+                    coolDownTime = Settings.eatCoolDownInMinute;
                     break;
 
                 case BehaviourTypes.Drink:
-                    gainValue = settings.DrinkGain;
-                    payValue = settings.DrinkCost;
-                    coolDownTime = settings.DrinkCoolDownInMinute;
+                    gainValue    = Settings.drinkGain;
+                    payValue     = Settings.drinkCost;
+                    coolDownTime = Settings.drinkCoolDownInMinute;
                     break;
 
                 // Do nothing.
                 default:
-                    gainValue = settings.EatGain;
-                    payValue = settings.EatCost;
-                    coolDownTime = settings.EatCoolDownInMinute;
+                    gainValue    = Settings.eatGain;
+                    payValue     = Settings.eatCost;
+                    coolDownTime = Settings.eatCoolDownInMinute;
                     break;
             }
         }
+
         // How to implement Cooldown?
-        public void Execute(Entity entity, int index, ref HumanStateFactor stateFactor, ref HumanStockFactor stockFactor, [ReadOnly]ref BehaviourType behaviourType, [ReadOnly]ref NavigationTag navigationTag)
+        public void Execute(Entity entity, int index, ref HumanStateFactor stateFactor,
+            ref HumanStockFactor stockFactor, [ReadOnly] ref BehaviourType behaviourType,
+            [ReadOnly] ref NavigationTag navigationTag)
         {
             //Debug.Log("hello");
             //var d= ComponentDataFromEntity<BehaviourType>;
             // if arrived, behave.
             if (navigationTag.Arrived)
-            {   
+            {
                 //Debug.Log("arrived");
-                PrepareValueForBehaviour (behaviourType.Behaviour, settings, stateFactor, stockFactor, out int gainValue, out int payValue, out int coolDownTime);
+                PrepareValueForBehaviour(behaviourType.Behaviour, Settings, stateFactor, stockFactor, out var gainValue,
+                    out var payValue, out var coolDownTime);
                 // 0.1 
                 // If Timer Haven't Start. Record Start Time.
                 // if ( !IsTimerStarted[index] )   
@@ -104,127 +202,38 @@ public class BehaviourSystem : JobComponentSystem
                 //     timers.timer.Started = false;
                 // }
                 // Because it's value type.
-                
-                var timers = timersAccssor[entity];
+
+                var timers = TimersAccssor[entity];
                 // Schedule Timer when not started.
-                if ( !timers[0].Started )
-                {
+                if (!timers[0].Started)
                     timers[0] = new Timer
                     {
-                        running = true,
-                        started = true,
-                        elapsedTime = 0,
-                        duration = coolDownTime
+                        Running     = true,
+                        Started     = true,
+                        ElapsedTime = 0,
+                        Duration    = coolDownTime
                     };
-                    //Debug.Log("started"+timersAccssor[entity][0].Duration+timers[0].duration);
-                    
-                } 
+                //Debug.Log("started"+timersAccssor[entity][0].Duration+timers[0].duration);
+
                 // Timer finished so start to do sth.
-                if ( timers[0].Finished)
-                { 
+                if (timers[0].Finished)
+                {
                     //Debug.Log("finished");
                     switch (behaviourType.Behaviour)
                     {
-                        case BehaviourTypes.Eat :
-                        CalculateBehaviourEffect(ref stateFactor.Hungry, ref stockFactor.Food, gainValue, payValue); 
-                        break;
-                    case BehaviourTypes.Drink :
-                        CalculateBehaviourEffect(ref stateFactor.Thirsty, ref stockFactor.Water, gainValue, payValue);
-                        break;
+                        case BehaviourTypes.Eat:
+                            CalculateBehaviourEffect(ref stateFactor.Hungry, ref stockFactor.Food, gainValue, payValue);
+                            break;
+                        case BehaviourTypes.Drink:
+                            CalculateBehaviourEffect(ref stateFactor.Thirsty, ref stockFactor.Water, gainValue,
+                                payValue);
+                            break;
                     }
+
                     // reset
-                    timers[0] = new Timer{};
+                    timers[0] = new Timer();
                 }
-            }       
-        }
-    }
-
-    protected override JobHandle OnUpdate(JobHandle inputDependency)
-    {
-        if (!IsInitialize)
-        {
-            IsInitialize       = true;
-            
-            //Interesting, gather info of entity cannot be allocate with temp memory because it's a job inside.
-            var Entities = m_BeforeAdded.ToEntityArray(Allocator.TempJob);
-            //Debug.Log(Entities.Length);
-            for (int i = 0; i < Entities.Length; i++)
-            {
-                EntityManager.AddBuffer<Timer>(Entities[i]);
-                var Timers = EntityManager.GetBuffer<Timer>(Entities[i]);
-                Timers.Add(new Timer{});
-                //Debug.Log(Timers.Length);
             }
-            Entities.Dispose();
         }
-        var timersAccssor = GetBufferFromEntity<Timer>(false);
-
-        EntityManager.GetAllUniqueSharedComponentData(m_UniqueType);
-        
-
-        // index0 has each value 0. 
-        // For now I have nothing special in value, so just use 1.
-        var settings = m_UniqueType[1];
-
-        // iterate this way might be faster..
-        m_ExecuteBehaviourGroup.SetFilter(settings);
-
-        var ProcessFactorJob = new ProcessFactor
-        {
-            timersAccssor             = timersAccssor,
-            settings           = settings,
-        };
-        var ProcessFactorJobHandle = ProcessFactorJob.Schedule(m_ExecuteBehaviourGroup,inputDependency);
-        m_UniqueType.Clear();
-
-        // // TEST
-        // test_directly = HumanStateFactor.MaxValue[1];
-        // Debug.Log(test[0]+"aaa"+test.Length);
-        // Debug.Log("Inupdate"+test_directly);
-
-        inputDependency = ProcessFactorJobHandle;
-        return inputDependency;
-    }
-
-    // TEST
-    // public void LoopDebug(NativeArray<Entity> array)
-    // {
-    //     for (int i = 0; i < array.Length; i++)
-    //     {
-    //         var hasComponent = EntityManager.HasComponent<Timer<BehaviourValue>>(array[i]);
-    //         Debug.Log($"Array[{i}] = {hasComponent}");
-    //     }
-    // } 
-
-
-    protected override void OnCreateManager()
-    {
-        // valid. 
-        // so, use struct or anything else to initialize array? fixed array? how to use ISharedComponentData?
-        // test = new NativeArray<int>(HumanStateFactor.MaxValue,Allocator.Persistent);
-        
-        // test[0] = 10;
-        m_BeforeAdded = GetEntityQuery(new EntityQueryDesc{
-            All = new[] {
-                ComponentType.ReadOnly<BehaviourType>(),
-                ComponentType.ReadOnly<BehaviourValue>(),
-                ComponentType.ReadWrite<HumanStateFactor>(),
-                ComponentType.ReadWrite<HumanStockFactor>(),
-                ComponentType.ReadOnly<NavigationTag>(),
-                // is it possible RO?
-            },
-        }); 
-        // Cannot get manager in OnCreateManager?
-        m_ExecuteBehaviourGroup = GetEntityQuery(new EntityQueryDesc{
-            All = new[] {
-                ComponentType.ReadOnly<BehaviourType>(),
-                ComponentType.ReadOnly<BehaviourValue>(),
-                ComponentType.ReadWrite<HumanStateFactor>(),
-                ComponentType.ReadWrite<HumanStockFactor>(),
-                ComponentType.ReadOnly<NavigationTag>(),
-                // is it possible RO? yes.. that might be a problem
-                ComponentType.ReadWrite<Timer>(),
-            },
-        }); 
     }
 }

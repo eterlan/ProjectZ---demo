@@ -1,22 +1,16 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using Unity.Entities;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Samples.HelloCube_06
 {
     [RequiresEntityConversion]
     public class HelloSpawnerProxy : MonoBehaviour, IDeclareReferencedPrefabs, IConvertGameObjectToEntity
     {
-        public GameObject Prefab;
-        public int CountX;
-        public int CountY;
-
-        // Referenced prefabs have to be declared so that the conversion system knows about them ahead of time
-        public void DeclareReferencedPrefabs(List<GameObject> gameObjects)
-        {
-            gameObjects.Add(Prefab);
-        }
+        [FormerlySerializedAs("CountX")] public int        countX;
+        [FormerlySerializedAs("CountY")] public int        countY;
+        [FormerlySerializedAs("Prefab")] public GameObject prefab;
 
         // Lets you convert the editor data representation to the entity optimal runtime representation
 
@@ -27,11 +21,17 @@ namespace Samples.HelloCube_06
                 // The referenced prefab will be converted due to DeclareReferencedPrefabs.
                 // So here we simply map the game object to an entity reference to that prefab.
                 // GetPrimaryEntity?
-                Prefab = conversionSystem.GetPrimaryEntity(Prefab),
-                CountX = CountX,
-                CountY = CountY
+                Prefab = conversionSystem.GetPrimaryEntity(prefab),
+                CountX = countX,
+                CountY = countY
             };
             dstManager.AddComponentData(entity, spawnerData);
+        }
+
+        // Referenced prefabs have to be declared so that the conversion system knows about them ahead of time
+        public void DeclareReferencedPrefabs(List<GameObject> gameObjects)
+        {
+            gameObjects.Add(prefab);
         }
     }
 }

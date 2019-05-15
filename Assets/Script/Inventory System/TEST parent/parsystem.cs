@@ -141,7 +141,7 @@
 //                 // so -> who is in this WriteGroup? why they can't show up?
 //                 Options = EntityQueryOptions.FilterWriteGroup
 //             });
-            
+
 //             // only has previous parent.
 //             // when delete?
 //             m_RemovedParentsGroup = GetEntityQuery(new EntityQueryDesc
@@ -194,7 +194,7 @@
 //             var childEntities = m_NewParentsGroup.ToEntityArray(Allocator.TempJob);
 //             // parents in m_NewParentsGroup == group.ToComponentDataArray<Parent> 
 //             var parents = m_NewParentsGroup.ToComponentDataArray<Parent>(Allocator.TempJob);
-            
+
 //             // For every enetity without prevParent, add prevParent component.
 //             EntityManager.AddComponent(m_NewParentsGroup, typeof(PreviousParent));
 
@@ -202,10 +202,10 @@
 //             {
 //                 var childEntity = childEntities[i];
 //                 var parentEntity = parents[i].Value;
-                    
+
 //                 AddChildToParent(childEntity, parentEntity);
 //             }
-            
+
 //             childEntities.Dispose();
 //             parents.Dispose();
 //         }
@@ -215,7 +215,7 @@
 //         {
 //             var childEntities = m_RemovedParentsGroup.ToEntityArray(Allocator.TempJob);
 //             var previousParents = m_RemovedParentsGroup.ToComponentDataArray<PreviousParent>(Allocator.TempJob);
-            
+
 //             for (int i = 0; i < childEntities.Length; i++)
 //             {
 //                 var childEntity = childEntities[i];
@@ -223,12 +223,12 @@
 
 //                 RemoveChildFromParent(childEntity, previousParentEntity);
 //             }
-            
+
 //             EntityManager.RemoveComponent(m_RemovedParentsGroup, typeof(PreviousParent));            
 //             childEntities.Dispose();
 //             previousParents.Dispose();
 //         }
-        
+
 //         void UpdateChangeParents()
 //         {
 //             // Might need changed group == m_ExistingParentsGroup
@@ -253,13 +253,13 @@
 //                 };
 //                 var filterChangedParentsJobHandle = filterChangedParentsJob.Schedule();
 //                 filterChangedParentsJobHandle.Complete();
-                
+
 //                 for (int i = 0; i < changedParents.Length; i++)
 //                 {
 //                     var childEntity = changedParents[i].ChildEntity;
 //                     var previousParentEntity = changedParents[i].PreviousParentEntity;
 //                     var parentEntity = changedParents[i].ParentEntity;
-              
+
 //                     RemoveChildFromParent(childEntity, previousParentEntity);
 //                     AddChildToParent(childEntity, parentEntity);
 //                 }    
@@ -271,7 +271,7 @@
 //         void UpdateDeletedParents()
 //         {
 //             var previousParents = m_DeletedParentsGroup.ToEntityArray(Allocator.TempJob);
-            
+
 //             for (int i = 0; i < previousParents.Length; i++)
 //             {
 //                 var parentEntity = previousParents[i];
@@ -281,14 +281,14 @@
 //                 // double loop get each child
 //                 for (int j = 0; j < childEntitiesSource.Length; j++)
 //                     childEntities[j] = childEntitiesSource[j].Value;
-                
+
 //                 for (int j = 0; j < childEntities.Length; j++)
 //                 {
 //                     var childEntity = childEntities[j];
-                    
+
 //                     if (!EntityManager.Exists(childEntity))
 //                         continue;
-                    
+
 //                     if (EntityManager.HasComponent(childEntity, typeof(Parent)))
 //                         EntityManager.RemoveComponent(childEntity, typeof(Parent));
 //                     if (EntityManager.HasComponent(childEntity, typeof(PreviousParent)))
@@ -296,20 +296,21 @@
 //                     if (EntityManager.HasComponent(childEntity, typeof(LocalToParent)))
 //                         EntityManager.RemoveComponent(childEntity, typeof(LocalToParent));
 //                 }
-                
+
 //                 childEntities.Dispose();
 //             }
 //             EntityManager.RemoveComponent(m_DeletedParentsGroup, typeof(Child));            
 //             previousParents.Dispose();
 //         }
-        
+
 //         protected override void OnUpdate()
 //         {
 //             UpdateDeletedParents();
 //             UpdateRemoveParents();
-            
+
 //             UpdateChangeParents();
 //             UpdateNewParents();
 //         }
 //     }
 // }
+

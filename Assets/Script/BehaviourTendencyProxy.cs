@@ -1,7 +1,6 @@
 using Unity.Entities;
 using UnityEngine;
 
-
 [InternalBufferCapacity(8)]
 public struct BehaviourTendency : IBufferElementData
 {
@@ -16,16 +15,18 @@ public struct BehaviourTendency : IBufferElementData
     {
         return e.Value;
     }
-    public static implicit operator BehaviourTendency(float  e)
+
+    public static implicit operator BehaviourTendency(float e)
     {
-        return new BehaviourTendency{Value = e};
+        return new BehaviourTendency {Value = e};
     }
+
     public float Value;
 }
 
 public class BehaviourTendencyProxy : MonoBehaviour, IConvertGameObjectToEntity
 {
-    public void Convert ( Entity entity, EntityManager manager, GameObjectConversionSystem conversionSystem)
+    public void Convert(Entity entity, EntityManager manager, GameObjectConversionSystem conversionSystem)
     {
         manager.AddBuffer<BehaviourTendency>(entity);
     }

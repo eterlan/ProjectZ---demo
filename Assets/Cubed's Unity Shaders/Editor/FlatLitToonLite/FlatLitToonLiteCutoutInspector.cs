@@ -15,28 +15,28 @@ namespace CubedsUnityShaders
             Back
         }
 
-        MaterialProperty mainTexture;
-        MaterialProperty color;
-        MaterialProperty colorMask;
-        MaterialProperty shadow;
-        MaterialProperty emissionMap;
-        MaterialProperty emissionColor;
-        MaterialProperty normalMap;
-        MaterialProperty alphaCutoff;
-        MaterialProperty cullingMode;
+        MaterialProperty m_mainTexture;
+        MaterialProperty m_color;
+        MaterialProperty m_colorMask;
+        MaterialProperty m_shadow;
+        MaterialProperty m_emissionMap;
+        MaterialProperty m_emissionColor;
+        MaterialProperty m_normalMap;
+        MaterialProperty m_alphaCutoff;
+        MaterialProperty m_cullingMode;
 
         public override void OnGUI(MaterialEditor materialEditor, MaterialProperty[] properties)
         {
             { //Find Properties
-                mainTexture = FindProperty("_MainTex", properties);
-                color = FindProperty("_Color", properties);
-                colorMask = FindProperty("_ColorMask", properties);
-                shadow = FindProperty("_Shadow", properties);
-                emissionMap = FindProperty("_EmissionMap", properties);
-                emissionColor = FindProperty("_EmissionColor", properties);
-                normalMap = FindProperty("_BumpMap", properties);
-                alphaCutoff = FindProperty("_Cutoff", properties);
-                cullingMode = FindProperty("_Cull", properties);
+                m_mainTexture = FindProperty("_MainTex", properties);
+                m_color = FindProperty("_Color", properties);
+                m_colorMask = FindProperty("_ColorMask", properties);
+                m_shadow = FindProperty("_Shadow", properties);
+                m_emissionMap = FindProperty("_EmissionMap", properties);
+                m_emissionColor = FindProperty("_EmissionColor", properties);
+                m_normalMap = FindProperty("_BumpMap", properties);
+                m_alphaCutoff = FindProperty("_Cutoff", properties);
+                m_cullingMode = FindProperty("_Cull", properties);
             }
 
             //Shader Properties GUI
@@ -44,39 +44,39 @@ namespace CubedsUnityShaders
 
             EditorGUI.BeginChangeCheck();
             {
-                EditorGUI.showMixedValue = cullingMode.hasMixedValue;
-                var cMode = (CullingMode)cullingMode.floatValue;
+                EditorGUI.showMixedValue = m_cullingMode.hasMixedValue;
+                var cMode = (CullingMode)m_cullingMode.floatValue;
 
                 EditorGUI.BeginChangeCheck();
                 cMode = (CullingMode)EditorGUILayout.Popup("Culling Mode", (int)cMode, Enum.GetNames(typeof(CullingMode)));
                 if (EditorGUI.EndChangeCheck())
                 {
                     materialEditor.RegisterPropertyChangeUndo("Rendering Mode");
-                    cullingMode.floatValue = (float)cMode;
+                    m_cullingMode.floatValue = (float)cMode;
                 }
                 EditorGUI.showMixedValue = false;
                 EditorGUILayout.Space();
 
-                materialEditor.TexturePropertySingleLine(new GUIContent("Main Texture", "Main Color Texture (RGB)"), mainTexture, color);
+                materialEditor.TexturePropertySingleLine(new GUIContent("Main Texture", "Main Color Texture (RGB)"), m_mainTexture, m_color);
                 EditorGUI.indentLevel += 1;
-                materialEditor.TexturePropertySingleLine(new GUIContent("Color Mask", "Masks Color Tinting (G)"), colorMask);
+                materialEditor.TexturePropertySingleLine(new GUIContent("Color Mask", "Masks Color Tinting (G)"), m_colorMask);
                 EditorGUI.indentLevel -= 1;
 
-                materialEditor.TexturePropertySingleLine(new GUIContent("Normal Map", "Normal Map (RGB)"), normalMap);
-                materialEditor.TexturePropertySingleLine(new GUIContent("Emission", "Emission (RGB)"), emissionMap, emissionColor);
+                materialEditor.TexturePropertySingleLine(new GUIContent("Normal Map", "Normal Map (RGB)"), m_normalMap);
+                materialEditor.TexturePropertySingleLine(new GUIContent("Emission", "Emission (RGB)"), m_emissionMap, m_emissionColor);
                 EditorGUI.BeginChangeCheck();
-                materialEditor.TextureScaleOffsetProperty(mainTexture);
+                materialEditor.TextureScaleOffsetProperty(m_mainTexture);
                 if (EditorGUI.EndChangeCheck())
                 {
-                    emissionMap.textureScaleAndOffset = mainTexture.textureScaleAndOffset;
+                    m_emissionMap.textureScaleAndOffset = m_mainTexture.textureScaleAndOffset;
                 }
 
                 EditorGUILayout.Space();
                 EditorGUILayout.Space();
-                materialEditor.ShaderProperty(alphaCutoff, "Alpha Cutoff");
+                materialEditor.ShaderProperty(m_alphaCutoff, "Alpha Cutoff");
 
                 EditorGUILayout.Space();
-                materialEditor.ShaderProperty(shadow, "Shadow");
+                materialEditor.ShaderProperty(m_shadow, "Shadow");
             }
             EditorGUI.EndChangeCheck();
 
