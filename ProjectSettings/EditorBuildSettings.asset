@@ -4,5 +4,8 @@
 EditorBuildSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 2
-  m_Scenes: []
+  m_Scenes:
+  - enabled: 1
+    path: Assets/Scenes/Heart Test.unity
+    guid: 7b769167497aa40beb0be53e31d3f549
   m_configObjects: {}

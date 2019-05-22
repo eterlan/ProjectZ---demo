@@ -258,7 +258,4 @@ public class CollectionSystem : ComponentSystem
         });
     }
 
-    protected override void OnDestroy()
-    {
-    }
 }
