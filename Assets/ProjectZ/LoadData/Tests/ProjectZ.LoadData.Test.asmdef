@@ -1,0 +1,23 @@
+{
+    "name": "ProjectZ.LoadData.Test",
+    "references": [
+        "Unity.Entities",
+        "ProjectZ.AI",
+        "ProjectZ.Component",
+        "ProjectZ.Test",
+        "ProjectZ.LoadData"
+    ],
+    "optionalUnityReferences": [
+        "TestAssemblies"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": []
+}

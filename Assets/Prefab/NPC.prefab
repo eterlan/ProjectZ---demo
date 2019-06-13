@@ -167,12 +167,10 @@ GameObject:
   - component: {fileID: 1193171709925435317}
   - component: {fileID: 773529459333767691}
   - component: {fileID: 5460695945515398948}
-  - component: {fileID: 768299482}
-  - component: {fileID: 2555288295788916000}
-  - component: {fileID: 8917191543411633870}
-  - component: {fileID: 286985429291123487}
-  - component: {fileID: 504398144578026863}
-  - component: {fileID: 3214255101587759709}
+  - component: {fileID: 408270223320701423}
+  - component: {fileID: 6982717361240483743}
+  - component: {fileID: 9039150876585559220}
+  - component: {fileID: 8283004908842285322}
   m_Layer: 0
   m_Name: NPC
   m_TagString: Untagged
@@ -221,7 +219,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 15dd1420125a148ce8c5b1a2317b2788, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  MetersPerSecond: 1
+  metersPerSecond: 1
 --- !u!114 &773529459333767691
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -234,10 +232,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3fe412790f31e45358ef30aba3e34d90, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  Sleepiness: 0
-  Hungry: 44
-  Thirsty: 23
-  Stamina: 0
+  hungry: 0
+  sleepiness: 0
+  stamina: 0
+  thirsty: 0
 --- !u!114 &5460695945515398948
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -250,9 +248,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3cdbdc801f1c24839bda3ee205be15c3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  Food: 1
-  Water: 7
---- !u!114 &768299482
+  food: 0
+  water: 0
+--- !u!114 &408270223320701423
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -261,10 +259,10 @@ MonoBehaviour:
   m_GameObject: {fileID: 8842521787174613822}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: f14f0f8c1cd364ce5977957202a8c29d, type: 3}
+  m_Script: {fileID: 11500000, guid: f3ca6f19144e144e7a01281beba29bd9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
---- !u!114 &2555288295788916000
+--- !u!114 &6982717361240483743
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -273,10 +271,10 @@ MonoBehaviour:
   m_GameObject: {fileID: 8842521787174613822}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b6038e30d607e44ee947ae14fa3a4252, type: 3}
+  m_Script: {fileID: 11500000, guid: c968c060b26734625ac474bc61fe784d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
---- !u!114 &8917191543411633870
+--- !u!114 &9039150876585559220
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -285,10 +283,10 @@ MonoBehaviour:
   m_GameObject: {fileID: 8842521787174613822}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 7d95585508ca24c06a183eff25340c56, type: 3}
+  m_Script: {fileID: 11500000, guid: e365f9ddafdaa45089bdc2236f677016, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
---- !u!114 &286985429291123487
+--- !u!114 &8283004908842285322
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -297,30 +295,6 @@ MonoBehaviour:
   m_GameObject: {fileID: 8842521787174613822}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: e0da5aecd8b3148928cae0068681cbd7, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
---- !u!114 &504398144578026863
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8842521787174613822}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 71d03c7c05bc4418aa906de4c9ffeb8e, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
---- !u!114 &3214255101587759709
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8842521787174613822}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 7c9e34f3554a348fd93a8f721f3b1350, type: 3}
+  m_Script: {fileID: 11500000, guid: da20a2b005f9f4f1994202a1916e08f8, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 

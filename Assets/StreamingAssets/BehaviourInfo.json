@@ -1,0 +1,140 @@
+{
+  "Items": [
+    {
+      "Name": "Eat",
+      "FactorsInfo": [
+        {
+          "FactorName": "Hungry",
+          "FactorWeight": 1,
+          "FactorMode": "Direct"
+        },
+        {
+          "FactorName": "Food",
+          "FactorWeight": 0.2,
+          "FactorMode": "Direct"
+        }
+      ],
+      "NeedLevel": 1,
+      "": ""
+    },
+    {
+      "Name": "Drink",
+      "FactorsInfo": [
+        {
+          "FactorName": "Thirsty",
+          "FactorWeight": 1,
+          "FactorMode": "Direct"
+        },
+        {
+          "FactorName": "Water",
+          "FactorWeight": 0.2,
+          "FactorMode": "Direct"
+        }
+      ],
+      "NeedLevel": 1,
+      "": ""
+    },
+    {
+      "Name": "Hunt",
+      "FactorsInfo": [
+        {
+          "FactorName": "Food",
+          "FactorWeight": 1,
+          "FactorMode": "Inverse"
+        },
+        {
+          "FactorName": "Tired",
+          "FactorWeight": 0.2,
+          "FactorMode": "Inverse"
+        }
+      ],
+      "NeedLevel": 1,
+      "": ""
+    },
+    {
+      "Name": "GetWater",
+      "FactorsInfo": [
+        {
+          "FactorName": "Water",
+          "FactorWeight": 1,
+          "FactorMode": "Inverse"
+        },
+        {
+          "FactorName": "Tired",
+          "FactorWeight": 1,
+          "FactorMode": "Direct"
+        }
+      ],
+      "NeedLevel": 1,
+      "": ""
+    },
+    {
+      "Name": "Logging",
+      "FactorsInfo": [
+        {
+          "FactorName": "Lumber",
+          "FactorWeight": 1,
+          "FactorMode": "Inverse"
+        },
+        {
+          "FactorName": "Tired",
+          "FactorWeight": 1,
+          "FactorMode": "Direct"
+        }
+      ],
+      "NeedLevel": 1,
+      "": ""
+    },
+    {
+      "Name": "Sleep",
+      "FactorsInfo": [
+        {
+          "FactorName": "Time",
+          "FactorWeight": 1,
+          "FactorMode": "Direct"
+        },
+        {
+          "FactorName": "Tired",
+          "FactorWeight": 1,
+          "FactorMode": "Inverse"
+        }
+      ],
+      "NeedLevel": 1,
+      "": ""
+    },
+    {
+      "Name": "Heat",
+      "FactorsInfo": [
+        {
+          "FactorName": "Temperature",
+          "FactorWeight": 1,
+          "FactorMode": "Inverse"
+        },
+        {
+          "FactorName": "Lumber",
+          "FactorWeight": 1,
+          "FactorMode": "Direct"
+        }
+      ],
+      "NeedLevel": 1,
+      "": ""
+    },
+    {
+      "Name": "Heal",
+      "FactorsInfo": [
+        {
+          "FactorName": "Hp",
+          "FactorWeight": 1,
+          "FactorMode": "Direct"
+        },
+        {
+          "FactorName": "Herb",
+          "FactorWeight": 0.2,
+          "FactorMode": "Direct"
+        }
+      ],
+      "NeedLevel": 1,
+      "": ""
+    }
+  ]
+}

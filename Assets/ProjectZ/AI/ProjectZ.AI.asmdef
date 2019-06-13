@@ -1,0 +1,26 @@
+{
+    "name": "ProjectZ.AI",
+    "references": [
+        "GUID:b92ff8b696eb46a4b90382b319e963fe",
+        "GUID:734d92eba21c94caba915361bd5ac177",
+        "GUID:d8b63aba1907145bea998dd612889d6b",
+        "GUID:a5baed0c9693541a5bd947d336ec7659",
+        "GUID:7a450cf7ca9694b5a8bfa3fd83ec635a",
+        "GUID:e0cd26848372d4e5c891c569017e11f1",
+        "GUID:8819f35a0fc84499b990e90a4ca1911f",
+        "GUID:90f3d1579e1914ef1baf2ec673c8a112",
+        "GUID:ddb440754bfe5492bb2eb71461e49dd4"
+    ],
+    "optionalUnityReferences": [],
+    "includePlatforms": [
+        "Editor",
+        "macOSStandalone"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": []
+}

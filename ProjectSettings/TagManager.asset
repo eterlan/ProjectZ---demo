@@ -6,6 +6,7 @@ TagManager:
   tags:
   - TestTarget
   - Cell
+  - Item
   layers:
   - Default
   - TransparentFX

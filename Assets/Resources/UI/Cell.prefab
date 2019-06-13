@@ -11,10 +11,10 @@ GameObject:
   - component: {fileID: 8612083301795439661}
   - component: {fileID: 8612083301795439659}
   - component: {fileID: 8612083301795439660}
-  - component: {fileID: 6246894943339058241}
+  - component: {fileID: 4979690403266686011}
   m_Layer: 5
   m_Name: Cell
-  m_TagString: Untagged
+  m_TagString: Cell
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -75,7 +75,7 @@ MonoBehaviour:
   m_FillClockwise: 1
   m_FillOrigin: 0
   m_UseSpriteMesh: 0
---- !u!114 &6246894943339058241
+--- !u!114 &4979690403266686011
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}

@@ -1,0 +1,54 @@
+{
+  "Items": [
+    {
+      "Name": "Hungry",
+      "Min": "0",
+      "Max": "100"
+    },
+    {
+      "Name": "Thirsty",
+      "Min": "0",
+      "Max": "100"
+    },
+    {
+      "Name": "Food",
+      "Min": "0",
+      "Max": "10"
+    },
+    {
+      "Name": "Water",
+      "Min": "0",
+      "Max": "10"
+    },
+    {
+      "Name": "Lumber",
+      "Min": "0",
+      "Max": "10"
+    },
+    {
+      "Name": "Tired",
+      "Min": "0",
+      "Max": "100"
+    },
+    {
+      "Name": "Time",
+      "Min": "0",
+      "Max": "24"
+    },
+    {
+      "Name": "Temperature",
+      "Min": "-10",
+      "Max": "40"
+    },
+    {
+      "Name": "Hp",
+      "Min": "0",
+      "Max": "100"
+    },
+    {
+      "Name": "Herb",
+      "Min": "0",
+      "Max": "10"
+    }
+  ]
+}

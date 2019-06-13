@@ -65,7 +65,7 @@ namespace CubedsUnityShaders
                     var bMode = (BlendMode)m_blendMode.floatValue;
 
                     EditorGUI.BeginChangeCheck();
-                    bMode = (BlendMode)EditorGUILayout.Popup("Rendering Mode", (int)bMode, Enum.GetNames(typeof(BlendMode)));
+                    bMode = (BlendMode)EditorGUILayout.Popup("Rendering Mode", (int)bMode, System.Enum.GetNames(typeof(BlendMode)));
                     if (EditorGUI.EndChangeCheck())
                     {
                         materialEditor.RegisterPropertyChangeUndo("Rendering Mode");
@@ -99,7 +99,7 @@ namespace CubedsUnityShaders
                     var oMode = (OutlineMode)m_outlineMode.floatValue;
 
                     EditorGUI.BeginChangeCheck();
-                    oMode = (OutlineMode)EditorGUILayout.Popup("Outline Mode", (int)oMode, Enum.GetNames(typeof(OutlineMode)));
+                    oMode = (OutlineMode)EditorGUILayout.Popup("Outline Mode", (int)oMode, System.Enum.GetNames(typeof(OutlineMode)));
 
                     if (EditorGUI.EndChangeCheck())
                     {

@@ -48,7 +48,7 @@ namespace CubedsUnityShaders
                 var cMode = (CullingMode)m_cullingMode.floatValue;
 
                 EditorGUI.BeginChangeCheck();
-                cMode = (CullingMode)EditorGUILayout.Popup("Culling Mode", (int)cMode, Enum.GetNames(typeof(CullingMode)));
+                cMode = (CullingMode)EditorGUILayout.Popup("Culling Mode", (int)cMode, System.Enum.GetNames(typeof(CullingMode)));
                 if (EditorGUI.EndChangeCheck())
                 {
                     materialEditor.RegisterPropertyChangeUndo("Rendering Mode");
