@@ -1,38 +1,32 @@
 using ProjectZ.Component;
-using Unity.Collections;
 using Unity.Entities;
-using Unity.Jobs;
-using Unity.Transforms;
 
 namespace ProjectZ.AI
 {
-    public class BehaviourDecisionSystem : JobComponentSystem
+    [UpdateInGroup(typeof(AIDecisionGroup))]
+    public class BehaviourDecisionSystem : ComponentSystem
     {
-        private struct CopyFactor : IJobForEachWithEntity_EB<Factor>
+        protected override void OnUpdate()
         {
-            public int[] m_factorsMax;
-            public int[] m_factorsMin;
-            public int[] m_factorsValue;
+            // 那是分离成两个系统还是说分开，被手动调用？
+            // 分离系统的问题在于循环会调用多次CheckNeedSystem，根本不用
 
-            public void Execute(Entity entity, int i, [ReadOnly]DynamicBuffer<Factor> factor)
+            Entities.ForEach((Entity entity, DynamicBuffer<Tendency> c0, ref CurrentBehaviourInfo c1) =>
             {
-                var factors = factor.AsNativeArray();
-                m_factorsValue[i] = factors[i].Value;
-            }
+                var tendencies         = c0.AsNativeArray();
+                var currentLvBehavesID = AIDataSingleton.NeedLevels.BehavioursType[c1.CurrentNeedLv];
+
+                for (var i = 0; i < currentLvBehavesID.Length; i++)
+                {
+                    var behaveID = (int) currentLvBehavesID[i];
+                    // 如果行为倾向很严重，说明还有这个层次的需求，也就不需要继续运算
+                    if (tendencies[behaveID].Value > 0.75f) return;
+                }
+
+                c1.CurrentNeedLv += 1;
+            });
         }
-        private struct CalculateTendency : IJobForEachWithEntity<Rotation>
-        {
-        
-            public void Execute(Entity entity,int index, ref Rotation rotation)
-            {
-            
-            }
-        }
-        protected override JobHandle OnUpdate(JobHandle inputDependency)
-        {
-        
-            return inputDependency;
-        }
+
 
         protected override void OnCreate()
         {
