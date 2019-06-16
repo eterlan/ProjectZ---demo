@@ -14,7 +14,7 @@ namespace ProjectZ.AI.Tests
         [SetUp]
         public void SetUp()
         {
-            var archetype = m_Manager.CreateArchetype(typeof(CurrentBehaviourInfo), typeof(Factor), typeof
+            var archetype = m_Manager.CreateArchetype(typeof(NeedLv), typeof(Factor), typeof
                 (Tendency));
             m_entity = m_Manager.CreateEntity(archetype);
             World.GetOrCreateSystem<ConvertDataToSingleton>().Update();
@@ -25,9 +25,9 @@ namespace ProjectZ.AI.Tests
         [Test]
         public void _0_When_Not_Exceed_Timer_System_Not_Modify_Need_Lv()
         {
-            m_Manager.SetComponentData(m_entity, new CurrentBehaviourInfo {CurrentNeedLv = 1});
+            m_Manager.SetComponentData(m_entity, new NeedLv {CurrentNeedLv = 1});
             World.GetOrCreateSystem<PeriodCheckNeedsSystem>().Update();
-            var target = m_Manager.GetComponentData<CurrentBehaviourInfo>(m_entity).CurrentNeedLv;
+            var target = m_Manager.GetComponentData<NeedLv>(m_entity).CurrentNeedLv;
             Assert.AreEqual(1, target);
         }
 
@@ -36,7 +36,7 @@ namespace ProjectZ.AI.Tests
         {
             var origin = 1;
             m_Manager.SetComponentData(m_entity,
-                new CurrentBehaviourInfo {CurrentNeedLv = origin, PeriodCheckTimer = 2});
+                new NeedLv {CurrentNeedLv = origin, PeriodCheckTimer = 2});
             var buffer = m_Manager.GetBuffer<Tendency>(m_entity);
             var length = Enum.GetValues(typeof(BehaviourType)).Length;
             // @Todo Set Tendency bound from 0 to 1;
@@ -49,7 +49,7 @@ namespace ProjectZ.AI.Tests
             }
 
             World.GetOrCreateSystem<PeriodCheckNeedsSystem>().Update();
-            var target = m_Manager.GetComponentData<CurrentBehaviourInfo>(m_entity).CurrentNeedLv;
+            var target = m_Manager.GetComponentData<NeedLv>(m_entity).CurrentNeedLv;
             Assert.AreEqual(origin, target);
         }
 
@@ -58,21 +58,21 @@ namespace ProjectZ.AI.Tests
         {
             var origin = 1;
             m_Manager.SetComponentData(m_entity,
-                new CurrentBehaviourInfo {CurrentNeedLv = origin, PeriodCheckTimer = 2});
+                new NeedLv {CurrentNeedLv = origin, PeriodCheckTimer = 2});
 
             var buffer    = m_Manager.GetBuffer<Tendency>(m_entity);
             var length    = AIDataSingleton.Behaviours.Count;
             var testValue = 0.1f;
             for (var i = 0; i < length; i++) buffer.Add(new Tendency {Value = testValue});
             World.GetOrCreateSystem<PeriodCheckNeedsSystem>().Update();
-            var target = m_Manager.GetComponentData<CurrentBehaviourInfo>(m_entity).CurrentNeedLv;
+            var target = m_Manager.GetComponentData<NeedLv>(m_entity).CurrentNeedLv;
             Assert.AreEqual(origin + 1, target);
         }
 
 //        [Test]
 //        public void _3_Test_Job()
 //        {
-//            m_Manager.SetComponentData(m_entity,new CurrentBehaviourInfo{CurrentNeedLv = 1,PeriodCheckTimer = 2});
+//            m_Manager.SetComponentData(m_entity,new NeedLv{CurrentNeedLv = 1,PeriodCheckTimer = 2});
 //            var buffer = m_Manager.GetBuffer<Tendency>(m_entity);
 //            var length = Enum.GetValues(typeof(BehaviourType)).Length;
 //            var testValue = 0.1f;
@@ -89,7 +89,7 @@ namespace ProjectZ.AI.Tests
 //                NeedLvBehavioursIndex = m_needLvBehavioursIndex
 //            }.Run();
 //            //World.GetOrCreateSystem<PeriodCheckNeedsSystem>().
-//            var target = m_Manager.GetComponentData<CurrentBehaviourInfo>(m_entity).CurrentNeedLv;
+//            var target = m_Manager.GetComponentData<NeedLv>(m_entity).CurrentNeedLv;
 //            Assert.AreEqual(1,target);
 //        }
     }

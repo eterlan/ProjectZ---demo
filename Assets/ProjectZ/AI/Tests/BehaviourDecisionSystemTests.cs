@@ -12,13 +12,13 @@ namespace ProjectZ.AI.Tests
         [SetUp]
         public void SetUp()
         {
-            m_entity0    = m_Manager.CreateEntity(typeof(Tendency), typeof(CurrentBehaviourInfo));
-            m_entity1    = m_Manager.CreateEntity(typeof(Tendency), typeof(CurrentBehaviourInfo));
+            m_entity0    = m_Manager.CreateEntity(typeof(Tendency), typeof(BehaviourInfo));
+            m_entity1    = m_Manager.CreateEntity(typeof(Tendency), typeof(BehaviourInfo));
             m_buffer0    = m_Manager.GetBuffer<Tendency>(m_entity0);
             m_buffer1    = m_Manager.GetBuffer<Tendency>(m_entity1);
             m_chunk      = m_Manager.GetChunk(m_entity0);
             m_bufferType = m_Manager.GetArchetypeChunkBufferType<Tendency>(true);
-            m_currType   = m_Manager.GetArchetypeChunkComponentType<CurrentBehaviourInfo>(false);
+            m_currType   = m_Manager.GetArchetypeChunkComponentType<BehaviourInfo>(false);
             var count0 = 0.1f;
             var count1 = 0.98f;
             for (var i = 0; i < AIDataSingleton.Behaviours.Count; i++)
@@ -36,7 +36,7 @@ namespace ProjectZ.AI.Tests
         private DynamicBuffer<Tendency>                           m_buffer1;
         private ArchetypeChunk                                    m_chunk;
         private ArchetypeChunkBufferType<Tendency>                m_bufferType;
-        private ArchetypeChunkComponentType<CurrentBehaviourInfo> m_currType;
+        private ArchetypeChunkComponentType<BehaviourInfo> m_currType;
 
         [Test]
         public void _0_Decision_System_Work_Properly()
@@ -48,7 +48,7 @@ namespace ProjectZ.AI.Tests
         public void _1_System_Find_Correct_Index_For_Buffer0()
         {
             World.GetOrCreateSystem<BehaviourDecisionSystem>().Update();
-            var target = m_Manager.GetComponentData<CurrentBehaviourInfo>(m_entity0).CurrBehaviourType;
+            var target = m_Manager.GetComponentData<BehaviourInfo>(m_entity0).CurrBehaviourType;
             Assert.AreEqual(7, (int) target);
         }
 
@@ -56,7 +56,7 @@ namespace ProjectZ.AI.Tests
         public void _1_System_Find_Correct_Index_For_Buffer1()
         {
             World.GetOrCreateSystem<BehaviourDecisionSystem>().Update();
-            var target = m_Manager.GetComponentData<CurrentBehaviourInfo>(m_entity1).CurrBehaviourType;
+            var target = m_Manager.GetComponentData<BehaviourInfo>(m_entity1).CurrBehaviourType;
             Assert.AreEqual(0, (int) target);
         }
 
@@ -76,9 +76,9 @@ namespace ProjectZ.AI.Tests
         public void _2_System_Would_Pass_Changed_Filter_At_The_First_Run()
         {
             //m_buffer0[1]
-            var origin = m_Manager.GetComponentData<CurrentBehaviourInfo>(m_entity0).CurrBehaviourType;
+            var origin = m_Manager.GetComponentData<BehaviourInfo>(m_entity0).CurrBehaviourType;
             World.GetOrCreateSystem<BehaviourDecisionSystem>().Update();
-            var after = m_Manager.GetComponentData<CurrentBehaviourInfo>(m_entity0).CurrBehaviourType;
+            var after = m_Manager.GetComponentData<BehaviourInfo>(m_entity0).CurrBehaviourType;
             Assert.AreNotEqual(origin, after);
         }
 
@@ -87,7 +87,7 @@ namespace ProjectZ.AI.Tests
         {
             var origin = m_chunk.GetComponentVersion(m_currType);
             World.GetOrCreateSystem<BehaviourDecisionSystem>().Update();
-            var target = m_Manager.GetComponentData<CurrentBehaviourInfo>(m_entity0).CurrBehaviourType;
+            var target = m_Manager.GetComponentData<BehaviourInfo>(m_entity0).CurrBehaviourType;
             var after  = m_chunk.GetComponentVersion(m_currType);
 
             Assert.AreNotEqual(origin, after);

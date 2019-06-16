@@ -72,7 +72,7 @@ namespace ProjectZ.AI
         }
 
         [BurstCompile]
-        public struct PeriodCheck : IJobForEachWithEntity_EBC<Tendency, CurrentBehaviourInfo>
+        public struct PeriodCheck : IJobForEachWithEntity_EBC<Tendency, NeedLv>
         {
             [ReadOnly]
             public float FixedDeltaTime;
@@ -90,7 +90,7 @@ namespace ProjectZ.AI
             public float NeedsCriticalVar;
 
             // 我要知道是谁时间到了，需要更新行为
-            public void Execute(Entity entity, int index, DynamicBuffer<Tendency> b0, ref CurrentBehaviourInfo c1)
+            public void Execute(Entity entity, int index, DynamicBuffer<Tendency> b0, ref NeedLv c1)
             {
                 // 每0.5s检查最初级需求，满足则向上
                 var checkPeriod = CheckNeedPeriods[0];
@@ -98,7 +98,7 @@ namespace ProjectZ.AI
                 if (c1.PeriodCheckTimer > checkPeriod) NeedsCheck(b0, ref c1);
             }
 
-            private void NeedsCheck(DynamicBuffer<Tendency> b0, ref CurrentBehaviourInfo c1)
+            private void NeedsCheck(DynamicBuffer<Tendency> b0, ref NeedLv c1)
             {
                 c1.PeriodCheckTimer = 0;
                 var lv = 0;

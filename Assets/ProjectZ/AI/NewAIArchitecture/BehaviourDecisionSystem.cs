@@ -50,7 +50,7 @@ namespace ProjectZ.AI
         {
             m_group = GetEntityQuery(
                 ComponentType.ReadOnly<Tendency>(),
-                ComponentType.ReadWrite<CurrentBehaviourInfo>());
+                ComponentType.ReadWrite<BehaviourInfo>());
             m_group.SetFilterChanged(typeof(Tendency));
         }
 
@@ -58,7 +58,7 @@ namespace ProjectZ.AI
         {
         }
 
-        private struct ModifyCurrentBehaviourJob : IJobForEachWithEntity<CurrentBehaviourInfo>
+        private struct ModifyCurrentBehaviourJob : IJobForEachWithEntity<BehaviourInfo>
         {
             [DeallocateOnJobCompletion]
             public NativeArray<int> MaximumIndexes;
@@ -69,7 +69,7 @@ namespace ProjectZ.AI
 
             // @Bug 错误的给不是触发条件的Component使用【ChangedFilter】，因此无效。
             // @Bug 没有标记作为监测变化Filter的Component。Group只对手动遍历如IJobChunk等生效。
-            public void Execute(Entity entity, int index, ref CurrentBehaviourInfo c0)
+            public void Execute(Entity entity, int index, ref BehaviourInfo c0)
             {
                 Debug.Log("GSV" + gsv + "LSV" + lsv);
                 c0.PrevBehaviourType = c0.CurrBehaviourType;

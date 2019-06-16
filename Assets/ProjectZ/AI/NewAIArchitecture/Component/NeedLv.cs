@@ -1,17 +1,14 @@
 using ProjectZ.Component;
-using ProjectZ.Component.Setting;
 using Unity.Entities;
 using Unity.Mathematics;
 
+
 namespace ProjectZ.AI
 {
-    public struct CurrentBehaviourInfo : IComponentData
+    public struct NeedLv : IComponentData
     {
+        public float PeriodCheckTimer ;
         private int m_currentNeedLv;
-
-        public BehaviourType CurrBehaviourType;
-        public float         PeriodCheckTimer;
-        public BehaviourType PrevBehaviourType;
 
         public int CurrentNeedLv
         {
