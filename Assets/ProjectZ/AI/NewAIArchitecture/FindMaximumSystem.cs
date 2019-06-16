@@ -48,12 +48,15 @@ namespace ProjectZ.AI
         public NativeArray<int> FindMaximum<T>(out JobHandle handle)
             where T : struct, IBufferElementData
         {
-            var query    = EntityManager.CreateEntityQuery(typeof(T));
+            var query    = GetEntityQuery(ComponentType.ReadOnly<T>());
             var entities = query.ToEntityArray(Allocator.TempJob);
             var entity   = entities[0];
+            var length =
+                EntityManager.GetChunk(entity).GetBufferAccessor(GetArchetypeChunkBufferType<Tendency>(true))[0].Length;
             entities.Dispose();
 
-            var length = EntityManager.GetBuffer<T>(entity).Length;
+            // @Bug THIS ONE. EM.BUFFER WOULD HAVE RW ACCESS.EntityManager.GetBuffer<T>(entity).Length;
+            // var length = 10;
             var output = new NativeArray<int>(length, Allocator.TempJob);
             var job    = new Sort<T> {Output = output};
             handle = job.Schedule(query);
@@ -64,7 +67,7 @@ namespace ProjectZ.AI
         {
             public NativeArray<int> Output;
 
-            public void Execute(Entity entity, int index, DynamicBuffer<T> b0)
+            public void Execute(Entity entity, int index, [ReadOnly] DynamicBuffer<T> b0)
             {
                 var largestIndex = 0;
                 var buffer       = b0.Reinterpret<float>().AsNativeArray();

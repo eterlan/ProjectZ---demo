@@ -60,6 +60,11 @@ namespace ProjectZ.AI.Tests
                 output.Dispose();
                 Assert.AreEqual(7, target);
             }
+
+            [Test]
+            public void _1_After_Job_Complete_Component_Version_Not_Changed()
+            {
+            }
         }
     }
 }
