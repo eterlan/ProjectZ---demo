@@ -18,12 +18,13 @@ namespace ProjectZ.AI.Tests
 
             m_tendencyType = m_Manager.GetArchetypeChunkBufferType<Tendency>(true);
 
-            var entity = m_Manager.CreateEntity(typeof(Tendency), typeof(Factor));
+            var entity = m_Manager.CreateEntity(typeof(Tendency), typeof(Factor), typeof(Resistance));
             m_chunk = m_Manager.GetChunk(entity);
+
+            // Set Factors
             var factorsCount = AIDataSingleton.Factors.Count;
             var factors      = m_Manager.GetBuffer<Factor>(entity);
-            // @Todo Factor should have bound.
-            var factor = 0.1f;
+            var factor       = 0.1f;
 
             for (var i = 0; i < factorsCount; i++)
             {
@@ -32,6 +33,7 @@ namespace ProjectZ.AI.Tests
                 factor += 0.1f;
             }
 
+            // Set Tendencies
             m_tendencies = m_Manager.GetBuffer<Tendency>(entity);
             var behavioursCount = AIDataSingleton.Behaviours.Count;
             var tendency        = 0.1f;
@@ -41,6 +43,10 @@ namespace ProjectZ.AI.Tests
                 m_tendencies.Add(new Tendency {Value = tendency});
                 tendency += 0.1f;
             }
+
+            // Set Resistance
+            var resistances = m_Manager.GetBuffer<Resistance>(entity);
+            for (var i = 0; i < behavioursCount; i++) resistances.Add(new Resistance {Value = 0});
         }
 
         private ArchetypeChunk                     m_chunk;

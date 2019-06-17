@@ -107,8 +107,7 @@ namespace ProjectZ.AI
             m_factorsMin.Dispose();
         }
 
-        //[BurstCompile]
-        private struct CalculateTendency : IJobForEach_BB<Factor, Tendency>
+        private struct CalculateTendency : IJobForEach_BBB<Factor, Resistance, Tendency>
         {
             [ReadOnly] public NativeMultiHashMap<int, int>   BehaviourFactorsModeMap;
             [ReadOnly] public NativeMultiHashMap<int, int>   BehaviourFactorsTypeMap;
@@ -116,7 +115,10 @@ namespace ProjectZ.AI
             [ReadOnly] public NativeArray<int>               FactorsMax;
             [ReadOnly] public NativeArray<int>               FactorsMin;
 
-            public void Execute([ReadOnly] DynamicBuffer<Factor> b0, DynamicBuffer<Tendency> b1)
+            public void Execute(
+                [ReadOnly] DynamicBuffer<Factor> b0,
+                DynamicBuffer<Resistance> b1,
+                DynamicBuffer<Tendency> b2)
             {
                 Debug.Log("execute");
                 // @Bug 为什么buffer version没有增加？
@@ -137,13 +139,20 @@ namespace ProjectZ.AI
                         result += ProcessFactor(factorIndex, mode, weight, b0[factorIndex].Value);
                     }
 
-                    result             /= factorCount;
-                    b1[behaviourCount] =  new Tendency {Value = result};
+                    // avoid influence by number of factors.
+                    result /= factorCount;
+                    // Take resistance factor into consideration. 
+                    result             *= 1 - b1[behaviourCount].Value;
+                    b2[behaviourCount] =  new Tendency {Value = result};
                     behaviourCount++;
                 }
             }
 
-            private float ProcessFactor(int factorIndex, int mode, float weight, int value)
+            private float ProcessFactor(
+                int factorIndex,
+                int mode,
+                float weight,
+                int value)
             {
                 var max = FactorsMax[factorIndex];
                 var min = FactorsMin[factorIndex];
