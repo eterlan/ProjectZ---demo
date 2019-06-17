@@ -3,6 +3,7 @@ using ProjectZ.Component.Setting;
 using ProjectZ.LoadData;
 using Unity.Collections;
 using Unity.Entities;
+using Unity.Jobs;
 using Unity.Mathematics;
 using UnityEngine;
 using static ProjectZ.Component.AIDataSingleton;
@@ -10,7 +11,7 @@ using static ProjectZ.Component.AIDataSingleton;
 namespace ProjectZ.AI
 {
     [UpdateInGroup(typeof(AIDecisionGroup))]
-    public class PeriodUpdateTendencySystem : ComponentSystem
+    public class PeriodUpdateTendencySystem : JobComponentSystem
     {
         private NativeMultiHashMap<int, int>   m_behaviourFactorsModeMap;
         private NativeMultiHashMap<int, int>   m_behaviourFactorsTypeMap;
@@ -18,91 +19,56 @@ namespace ProjectZ.AI
         private float                          m_checkNeedPeriods;
         private NativeArray<int>               m_factorsMax;
         private NativeArray<int>               m_factorsMin;
-        private NativeArray<float>             m_tendencies;
 
-        protected override void OnUpdate()
+        protected override JobHandle OnUpdate(JobHandle inputDependency)
         {
             // get factor
             // get info from Singleton
             // if timer xx, access to tendency
+
             var deltaTime = Time.deltaTime;
-            Entities.ForEach((ref NeedLvTimerSingleton timer) =>
+            var timer     = GetSingleton<NeedLvTimerSingleton>().Value;
+            timer += deltaTime;
+
+            if (timer > m_checkNeedPeriods)
             {
-                timer.Value += deltaTime;
-                if (timer.Value > m_checkNeedPeriods)
-                {
-                    timer.Value = 0;
-                    CalculateTendency();
-                }
-            });
-            m_factorsMax.Dispose();
-            m_factorsMin.Dispose();
-            m_tendencies.Dispose();
+                timer           = 0;
+                inputDependency = ScheduleCalculateTendencyJob(inputDependency);
+            }
+
+            SetSingleton(new NeedLvTimerSingleton {Value = timer});
             // 不进去就不Schedule Job，在外面确认DidChange。这样的话可以使用IJobForEach
-            // Update Tendency
+            // Update Tendency    
             // 改成JobComponentSystem
+            inputDependency.Complete();
+            return inputDependency;
         }
 
-        private void CalculateTendency()
+        private JobHandle ScheduleCalculateTendencyJob(JobHandle inputDependency)
         {
-            Entities.ForEach((DynamicBuffer<Factor> b0, DynamicBuffer<Tendency> b1) =>
+            var calculateTendencyJob = new CalculateTendency
             {
-                Debug.Log("execute");
-                // @Bug 为什么buffer version没有增加？
-                var behaviourCount = 0;
-                while (m_behaviourFactorsTypeMap.TryGetFirstValue(behaviourCount, out var factorIndex, out var itt))
-                {
-                    var factorCount = 1;
-                    m_behaviourFactorsModeMap.TryGetFirstValue(behaviourCount, out var mode, out var itm);
-                    m_behaviourFactorsWeightMap.TryGetFirstValue(behaviourCount, out var weight, out var itw);
-                    var result = ProcessFactor(factorIndex, mode, weight, b0[factorIndex].Value);
-                    while (m_behaviourFactorsTypeMap.TryGetNextValue(out factorIndex, ref itt))
-                    {
-                        factorCount++;
-                        m_behaviourFactorsModeMap.TryGetNextValue(out mode, ref itm);
-                        m_behaviourFactorsWeightMap.TryGetNextValue(out weight, ref itw);
-                        result += ProcessFactor(factorIndex, mode, weight, b0[factorIndex].Value);
-                    }
+                BehaviourFactorsModeMap   = m_behaviourFactorsModeMap,
+                BehaviourFactorsTypeMap   = m_behaviourFactorsTypeMap,
+                BehaviourFactorsWeightMap = m_behaviourFactorsWeightMap,
+                FactorsMax                = m_factorsMax,
+                FactorsMin                = m_factorsMin
+            };
 
-                    result             /= factorCount;
-                    b1[behaviourCount] =  new Tendency {Value = result};
-                    //m_tendencies[behaviourCount] = result;
-                    behaviourCount++;
-                }
-            });
-
-            float ProcessFactor(int factorIndex, int mode, float weight, int value)
-            {
-                var max = m_factorsMax[factorIndex];
-                var min = m_factorsMin[factorIndex];
-                value = math.clamp(value, min, max);
-                var result = weight * (value - min) / (max - min);
-                switch ((FactorMode) mode)
-                {
-                    case FactorMode.Direct: break;
-                    case FactorMode.Inverse:
-                        result = 1 - result;
-                        break;
-                    case FactorMode.Custom:
-                        break;
-                    default:
-                        throw new ArgumentOutOfRangeException(nameof(mode), mode, null);
-                }
-
-                return result;
-            }
+            return calculateTendencyJob.Schedule(this, inputDependency);
         }
 
         protected override void OnCreate()
         {
+            World.GetOrCreateSystem<ConvertDataToSingleton>().Update();
             Initialize();
         }
 
         private void Initialize()
         {
             // @Todo A Data Manager is required.
-            World.GetOrCreateSystem<ConvertDataToSingleton>().Update();
             m_checkNeedPeriods = NeedLevels.CheckPeriods[0];
+
             EntityManager.CreateEntity(typeof(NeedLvTimerSingleton));
             SetSingleton<NeedLvTimerSingleton>(default);
 
@@ -115,13 +81,14 @@ namespace ProjectZ.AI
 
             // BehavioursInfo
             var behavioursLength = Behaviours.Count;
-            m_tendencies                = new NativeArray<float>(behavioursLength, Allocator.TempJob);
             m_behaviourFactorsTypeMap   = new NativeMultiHashMap<int, int>(behavioursLength, Allocator.Persistent);
             m_behaviourFactorsWeightMap = new NativeMultiHashMap<int, float>(behavioursLength, Allocator.Persistent);
             m_behaviourFactorsModeMap   = new NativeMultiHashMap<int, int>(behavioursLength, Allocator.Persistent);
+
             for (var i = 0; i < behavioursLength; i++)
             {
                 var factorCount = Behaviours.FactorsInfo.Types[i].Length;
+
                 for (var j = 0; j < factorCount; j++)
                 {
                     m_behaviourFactorsTypeMap.Add(i, (int) Behaviours.FactorsInfo.Types[i][j]);
@@ -136,6 +103,69 @@ namespace ProjectZ.AI
             m_behaviourFactorsTypeMap.Dispose();
             m_behaviourFactorsWeightMap.Dispose();
             m_behaviourFactorsModeMap.Dispose();
+            m_factorsMax.Dispose();
+            m_factorsMin.Dispose();
+        }
+
+        //[BurstCompile]
+        private struct CalculateTendency : IJobForEach_BB<Factor, Tendency>
+        {
+            [ReadOnly] public NativeMultiHashMap<int, int>   BehaviourFactorsModeMap;
+            [ReadOnly] public NativeMultiHashMap<int, int>   BehaviourFactorsTypeMap;
+            [ReadOnly] public NativeMultiHashMap<int, float> BehaviourFactorsWeightMap;
+            [ReadOnly] public NativeArray<int>               FactorsMax;
+            [ReadOnly] public NativeArray<int>               FactorsMin;
+
+            public void Execute([ReadOnly] DynamicBuffer<Factor> b0, DynamicBuffer<Tendency> b1)
+            {
+                Debug.Log("execute");
+                // @Bug 为什么buffer version没有增加？
+                var behaviourCount = 0;
+
+                while (BehaviourFactorsTypeMap.TryGetFirstValue(behaviourCount, out var factorIndex, out var itt))
+                {
+                    var factorCount = 1;
+                    BehaviourFactorsModeMap.TryGetFirstValue(behaviourCount, out var mode, out var itm);
+                    BehaviourFactorsWeightMap.TryGetFirstValue(behaviourCount, out var weight, out var itw);
+                    var result = ProcessFactor(factorIndex, mode, weight, b0[factorIndex].Value);
+
+                    while (BehaviourFactorsTypeMap.TryGetNextValue(out factorIndex, ref itt))
+                    {
+                        factorCount++;
+                        BehaviourFactorsModeMap.TryGetNextValue(out mode, ref itm);
+                        BehaviourFactorsWeightMap.TryGetNextValue(out weight, ref itw);
+                        result += ProcessFactor(factorIndex, mode, weight, b0[factorIndex].Value);
+                    }
+
+                    result             /= factorCount;
+                    b1[behaviourCount] =  new Tendency {Value = result};
+                    behaviourCount++;
+                }
+            }
+
+            private float ProcessFactor(int factorIndex, int mode, float weight, int value)
+            {
+                var max = FactorsMax[factorIndex];
+                var min = FactorsMin[factorIndex];
+                value = math.clamp(value, min, max);
+                var result = weight * (value - min) / (max - min);
+
+                switch ((FactorMode) mode)
+                {
+                    case FactorMode.Direct: break;
+                    case FactorMode.Inverse:
+                        result = 1 - result;
+                        break;
+
+                    case FactorMode.Custom:
+                        break;
+
+                    default:
+                        throw new ArgumentOutOfRangeException(nameof(mode), mode, null);
+                }
+
+                return result;
+            }
         }
     }
 }

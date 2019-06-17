@@ -27,6 +27,7 @@ namespace ProjectZ.AI
                 LvCount              = m_lvCount,
                 NeedsCriticalVar     = m_needsCriticalVar
             };
+
             var periodCheckJobHandle = periodCheckJob.Schedule(this, inputDependency);
 
             inputDependency = periodCheckJobHandle;
@@ -45,13 +46,14 @@ namespace ProjectZ.AI
         {
             m_lvCount          = AIDataSingleton.NeedLevels.Count;
             m_needsCriticalVar = AIDataSingleton.NeedLevels.NeedsCriticalVar;
-            m_checkNeedPeriods
-                = new NativeArray<float>(AIDataSingleton.NeedLevels.CheckPeriods, Allocator.Persistent);
-            m_needLvBehavioursIndex
-                = new NativeMultiHashMap<int, int>(AIDataSingleton.NeedLevels.Count, Allocator.Persistent);
+            m_checkNeedPeriods = new NativeArray<float>(AIDataSingleton.NeedLevels.CheckPeriods, Allocator.Persistent);
+            m_needLvBehavioursIndex =
+                new NativeMultiHashMap<int, int>(AIDataSingleton.NeedLevels.Count, Allocator.Persistent);
+
             for (var i = 0; i < AIDataSingleton.NeedLevels.Count; i++)
             {
                 var behavesCount = AIDataSingleton.NeedLevels.BehavioursType[i].Length;
+
                 for (var j = 0; j < behavesCount; j++)
                 {
                     var index = (int) AIDataSingleton.NeedLevels.BehavioursType[i][j];
@@ -72,25 +74,16 @@ namespace ProjectZ.AI
         }
 
         [BurstCompile]
-        public struct PeriodCheck : IJobForEachWithEntity_EBC<Tendency, NeedLv>
+        private struct PeriodCheck : IJobForEachWithEntity_EBC<Tendency, NeedLv>
         {
-            [ReadOnly]
-            public float FixedDeltaTime;
-
-            [ReadOnly]
-            public NativeArray<float> CheckNeedPeriods;
-
-            [ReadOnly]
-            public NativeMultiHashMap<int, int> NeedLvBehavioursInfo;
-
-            [ReadOnly]
-            public int LvCount;
-
-            [ReadOnly]
-            public float NeedsCriticalVar;
+            [ReadOnly] public float                        FixedDeltaTime;
+            [ReadOnly] public NativeArray<float>           CheckNeedPeriods;
+            [ReadOnly] public NativeMultiHashMap<int, int> NeedLvBehavioursInfo;
+            [ReadOnly] public int                          LvCount;
+            [ReadOnly] public float                        NeedsCriticalVar;
 
             // 我要知道是谁时间到了，需要更新行为
-            public void Execute(Entity entity, int index, DynamicBuffer<Tendency> b0, ref NeedLv c1)
+            public void Execute(Entity entity, int index, [ReadOnly] DynamicBuffer<Tendency> b0, ref NeedLv c1)
             {
                 // 每0.5s检查最初级需求，满足则向上
                 var checkPeriod = CheckNeedPeriods[0];
@@ -112,6 +105,7 @@ namespace ProjectZ.AI
                 var tendencies = b0.AsNativeArray();
                 if (!NeedLvBehavioursInfo.TryGetFirstValue(needsLv, out var behaveIndex, out var it))
                     return false;
+
                 if (tendencies[behaveIndex].Value > NeedsCriticalVar)
                     return false;
 

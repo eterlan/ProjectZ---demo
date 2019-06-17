@@ -15,6 +15,7 @@ namespace ProjectZ.AI.Tests
         {
             var timerEntity = World.GetOrCreateSystem<PeriodUpdateTendencySystem>()
                 .GetSingletonEntity<NeedLvTimerSingleton>();
+
             m_tendencyType = m_Manager.GetArchetypeChunkBufferType<Tendency>(true);
 
             var entity = m_Manager.CreateEntity(typeof(Tendency), typeof(Factor));
@@ -23,6 +24,7 @@ namespace ProjectZ.AI.Tests
             var factors      = m_Manager.GetBuffer<Factor>(entity);
             // @Todo Factor should have bound.
             var factor = 0.1f;
+
             for (var i = 0; i < factorsCount; i++)
             {
                 var value = factor * AIDataSingleton.Factors.FactorsMax[i];
@@ -33,6 +35,7 @@ namespace ProjectZ.AI.Tests
             m_tendencies = m_Manager.GetBuffer<Tendency>(entity);
             var behavioursCount = AIDataSingleton.Behaviours.Count;
             var tendency        = 0.1f;
+
             for (var i = 0; i < behavioursCount; i++)
             {
                 m_tendencies.Add(new Tendency {Value = tendency});
@@ -71,10 +74,11 @@ namespace ProjectZ.AI.Tests
         {
             World.GetOrCreateSystem<PeriodUpdateTendencySystem>()
                 .SetSingleton(new NeedLvTimerSingleton {Value = 0.51f});
+
             var before = m_chunk.GetComponentVersion(m_tendencyType);
-            Debug.Log("");
-            Debug.Log("");
             World.GetOrCreateSystem<PeriodUpdateTendencySystem>().Update();
+            Debug.Log("");
+            Debug.Log("");
             var after = m_chunk.GetComponentVersion(m_tendencyType);
             Assert.AreNotEqual(before, after);
         }
