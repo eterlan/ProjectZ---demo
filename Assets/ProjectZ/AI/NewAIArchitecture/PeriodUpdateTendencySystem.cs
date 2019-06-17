@@ -1,12 +1,10 @@
+using System;
 using ProjectZ.Component.Setting;
-using Unity.Entities;
-using Unity.Burst;
-using Unity.Collections;
-using Unity.Jobs;
-using Unity.Mathematics;
-using Unity.Transforms;
-using UnityEngine;
 using ProjectZ.LoadData;
+using Unity.Collections;
+using Unity.Entities;
+using Unity.Mathematics;
+using UnityEngine;
 using static ProjectZ.Component.AIDataSingleton;
 
 namespace ProjectZ.AI
@@ -14,13 +12,13 @@ namespace ProjectZ.AI
     [UpdateInGroup(typeof(AIDecisionGroup))]
     public class PeriodUpdateTendencySystem : ComponentSystem
     {
-        private float                          m_checkNeedPeriods;
+        private NativeMultiHashMap<int, int>   m_behaviourFactorsModeMap;
         private NativeMultiHashMap<int, int>   m_behaviourFactorsTypeMap;
         private NativeMultiHashMap<int, float> m_behaviourFactorsWeightMap;
-        private NativeMultiHashMap<int, int> m_behaviourFactorsModeMap;
+        private float                          m_checkNeedPeriods;
         private NativeArray<int>               m_factorsMax;
         private NativeArray<int>               m_factorsMin;
-        private NativeArray<float> m_tendencies;
+        private NativeArray<float>             m_tendencies;
 
         protected override void OnUpdate()
         {
@@ -37,32 +35,39 @@ namespace ProjectZ.AI
                     CalculateTendency();
                 }
             });
-            // 进去就是DidChange 或者 ChangeFilter
-            // 不进去就不Schedule Job，在外面确认DidChange
+            m_factorsMax.Dispose();
+            m_factorsMin.Dispose();
+            m_tendencies.Dispose();
+            // 不进去就不Schedule Job，在外面确认DidChange。这样的话可以使用IJobForEach
             // Update Tendency
+            // 改成JobComponentSystem
         }
 
         private void CalculateTendency()
         {
             Entities.ForEach((DynamicBuffer<Factor> b0, DynamicBuffer<Tendency> b1) =>
             {
+                Debug.Log("execute");
+                // @Bug 为什么buffer version没有增加？
                 var behaviourCount = 0;
-                while (m_behaviourFactorsTypeMap.TryGetFirstValue(behaviourCount,out int factorIndex, out var itt))
+                while (m_behaviourFactorsTypeMap.TryGetFirstValue(behaviourCount, out var factorIndex, out var itt))
                 {
                     var factorCount = 1;
                     m_behaviourFactorsModeMap.TryGetFirstValue(behaviourCount, out var mode, out var itm);
                     m_behaviourFactorsWeightMap.TryGetFirstValue(behaviourCount, out var weight, out var itw);
-                    var result = ProcessFactor(factorIndex,mode,weight,b0[factorIndex].Value);
+                    var result = ProcessFactor(factorIndex, mode, weight, b0[factorIndex].Value);
                     while (m_behaviourFactorsTypeMap.TryGetNextValue(out factorIndex, ref itt))
                     {
-                        factorCount ++;
+                        factorCount++;
                         m_behaviourFactorsModeMap.TryGetNextValue(out mode, ref itm);
-                        m_behaviourFactorsWeightMap.TryGetNextValue(out weight,ref itw);
-                        result += ProcessFactor(factorIndex,mode,weight,b0[factorIndex].Value);
+                        m_behaviourFactorsWeightMap.TryGetNextValue(out weight, ref itw);
+                        result += ProcessFactor(factorIndex, mode, weight, b0[factorIndex].Value);
                     }
 
-                    result /= factorCount;
-                    m_tendencies[behaviourCount] = result;
+                    result             /= factorCount;
+                    b1[behaviourCount] =  new Tendency {Value = result};
+                    //m_tendencies[behaviourCount] = result;
+                    behaviourCount++;
                 }
             });
 
@@ -70,26 +75,21 @@ namespace ProjectZ.AI
             {
                 var max = m_factorsMax[factorIndex];
                 var min = m_factorsMin[factorIndex];
+                value = math.clamp(value, min, max);
                 var result = weight * (value - min) / (max - min);
-                switch ((FactorMode)mode)
+                switch ((FactorMode) mode)
                 {
-                    case FactorMode.Direct : break;
-                    case FactorMode.Inverse :
-                        result = 1 - result; break;
+                    case FactorMode.Direct: break;
+                    case FactorMode.Inverse:
+                        result = 1 - result;
+                        break;
+                    case FactorMode.Custom:
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException(nameof(mode), mode, null);
                 }
 
                 return result;
-            }
-
-            float CalculateTendencyHasStock(int pFactor, int nFactor, int pMax, int nMax, float pImpactor, float nImpactor, bool isStockPositiveFactor)
-            {
-                if (isStockPositiveFactor)
-                    pFactor = pMax - pFactor;
-                else
-                    nFactor = nMax - nFactor;
-                var pTendency = pImpactor * pFactor / pMax;
-                var nTendency = nImpactor * nFactor / nMax;
-                return pTendency - nTendency;
             }
         }
 
@@ -115,7 +115,7 @@ namespace ProjectZ.AI
 
             // BehavioursInfo
             var behavioursLength = Behaviours.Count;
-            m_tendencies = new NativeArray<float>(behavioursLength,Allocator.TempJob);
+            m_tendencies                = new NativeArray<float>(behavioursLength, Allocator.TempJob);
             m_behaviourFactorsTypeMap   = new NativeMultiHashMap<int, int>(behavioursLength, Allocator.Persistent);
             m_behaviourFactorsWeightMap = new NativeMultiHashMap<int, float>(behavioursLength, Allocator.Persistent);
             m_behaviourFactorsModeMap   = new NativeMultiHashMap<int, int>(behavioursLength, Allocator.Persistent);
