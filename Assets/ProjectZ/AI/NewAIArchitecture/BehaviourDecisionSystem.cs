@@ -20,9 +20,6 @@ namespace ProjectZ.AI
             var modifyCurrBehaveJob = new ModifyCurrentBehaviourJob
             {
                 MaximumIndexes = maximumIndexes,
-                // test
-                gsv = GlobalSystemVersion,
-                lsv = LastSystemVersion
             };
             var modifyCurrBehaveJobHandle = modifyCurrBehaveJob.Schedule(m_group, jobHandle);
             inputDependency = modifyCurrBehaveJobHandle;
@@ -31,6 +28,35 @@ namespace ProjectZ.AI
 
             return inputDependency;
         }
+        
+        private struct ModifyCurrentBehaviourJob : IJobForEachWithEntity<BehaviourInfo>
+        {
+            [DeallocateOnJobCompletion]
+            public NativeArray<int> MaximumIndexes;
+
+            // @Bug 错误的给不是触发条件的Component使用【ChangedFilter】，因此无效。
+            // @Bug 没有标记作为监测变化Filter的Component。Group只对手动遍历如IJobChunk等生效。
+            public void Execute(Entity entity, int index, ref BehaviourInfo c0)
+            {
+                c0.PrevBehaviourType = c0.CurrBehaviourType;
+                c0.CurrBehaviourType = (BehaviourType) MaximumIndexes[index];
+            }
+        }
+//        }
+
+        protected override void OnCreate()
+        {
+            m_group = GetEntityQuery(
+                ComponentType.ReadOnly<Tendency>(),
+                ComponentType.ReadWrite<BehaviourInfo>());
+            m_group.SetFilterChanged(typeof(Tendency));
+        }
+
+        protected override void OnDestroy()
+        {
+        }
+    }
+}
 
 //        // 分成两个Job的原因是因为这样可以让上个Job用Burst运行，同时把修改当前行为和事件功能分离开
 //        // @Todo 考虑如何实现通知事件。用Queue吗？
@@ -44,37 +70,5 @@ namespace ProjectZ.AI
 //                    changedIndexes.Add(i);
 //                    c0.PrevBehaviourType = c0.CurrBehaviourType;
 //                }
+
 //            });
-//        }
-        protected override void OnCreate()
-        {
-            m_group = GetEntityQuery(
-                ComponentType.ReadOnly<Tendency>(),
-                ComponentType.ReadWrite<BehaviourInfo>());
-            m_group.SetFilterChanged(typeof(Tendency));
-        }
-
-        protected override void OnDestroy()
-        {
-        }
-
-        private struct ModifyCurrentBehaviourJob : IJobForEachWithEntity<BehaviourInfo>
-        {
-            [DeallocateOnJobCompletion]
-            public NativeArray<int> MaximumIndexes;
-
-            // test
-            public uint gsv;
-            public uint lsv;
-
-            // @Bug 错误的给不是触发条件的Component使用【ChangedFilter】，因此无效。
-            // @Bug 没有标记作为监测变化Filter的Component。Group只对手动遍历如IJobChunk等生效。
-            public void Execute(Entity entity, int index, ref BehaviourInfo c0)
-            {
-                Debug.Log("GSV" + gsv + "LSV" + lsv);
-                c0.PrevBehaviourType = c0.CurrBehaviourType;
-                c0.CurrBehaviourType = (BehaviourType) MaximumIndexes[index];
-            }
-        }
-    }
-}

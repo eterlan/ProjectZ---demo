@@ -35,44 +35,6 @@ namespace ProjectZ.AI
         }
 
 
-        protected override void OnCreate()
-        {
-            //@TODO Some Data singleton manager might be better? It's not bad to check again though.
-            World.GetOrCreateSystem<ConvertDataToSingleton>().Update();
-            Initialize();
-        }
-
-        private void Initialize()
-        {
-            m_lvCount          = AIDataSingleton.NeedLevels.Count;
-            m_needsCriticalVar = AIDataSingleton.NeedLevels.NeedsCriticalVar;
-            m_checkNeedPeriods = new NativeArray<float>(AIDataSingleton.NeedLevels.CheckPeriods, Allocator.Persistent);
-            m_needLvBehavioursIndex =
-                new NativeMultiHashMap<int, int>(AIDataSingleton.NeedLevels.Count, Allocator.Persistent);
-
-            for (var i = 0; i < AIDataSingleton.NeedLevels.Count; i++)
-            {
-                var behavesCount = AIDataSingleton.NeedLevels.BehavioursType[i].Length;
-
-                for (var j = 0; j < behavesCount; j++)
-                {
-                    var index = (int) AIDataSingleton.NeedLevels.BehavioursType[i][j];
-                    m_needLvBehavioursIndex.Add(i, index);
-                }
-            }
-
-            //@TODO, For the sake of Let While Loop Work.Should be removed if Lv1 behaviour is refined.
-            // 意思是属于需求等级0的行为id是1
-            m_needLvBehavioursIndex.Add(0, 1);
-        }
-
-        protected override void OnDestroy()
-        {
-            m_checkNeedPeriods.Dispose();
-            m_needLvBehavioursIndex.Dispose();
-            Debug.Log("Destroy");
-        }
-
         [BurstCompile]
         private struct PeriodCheck : IJobForEachWithEntity_EBC<Tendency, NeedLv>
         {
@@ -115,6 +77,44 @@ namespace ProjectZ.AI
 
                 return true;
             }
+        }
+
+        protected override void OnCreate()
+        {
+            //@TODO Some Data singleton manager might be better? It's not bad to check again though.
+            World.GetOrCreateSystem<ConvertDataToSingleton>().Update();
+            Initialize();
+        }
+
+        private void Initialize()
+        {
+            m_lvCount          = AIDataSingleton.NeedLevels.Count;
+            m_needsCriticalVar = AIDataSingleton.NeedLevels.NeedsCriticalVar;
+            m_checkNeedPeriods = new NativeArray<float>(AIDataSingleton.NeedLevels.CheckPeriods, Allocator.Persistent);
+            m_needLvBehavioursIndex =
+                new NativeMultiHashMap<int, int>(AIDataSingleton.NeedLevels.Count, Allocator.Persistent);
+
+            for (var i = 0; i < AIDataSingleton.NeedLevels.Count; i++)
+            {
+                var behavesCount = AIDataSingleton.NeedLevels.BehavioursType[i].Length;
+
+                for (var j = 0; j < behavesCount; j++)
+                {
+                    var index = (int) AIDataSingleton.NeedLevels.BehavioursType[i][j];
+                    m_needLvBehavioursIndex.Add(i, index);
+                }
+            }
+
+            //@TODO, For the sake of Let While Loop Work.Should be removed if Lv1 behaviour is refined.
+            // 意思是属于需求等级0的行为id是1
+            m_needLvBehavioursIndex.Add(0, 1);
+        }
+
+        protected override void OnDestroy()
+        {
+            m_checkNeedPeriods.Dispose();
+            m_needLvBehavioursIndex.Dispose();
+            Debug.Log("Destroy");
         }
     }
 }

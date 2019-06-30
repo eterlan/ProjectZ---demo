@@ -4,14 +4,16 @@
         "GUID:734d92eba21c94caba915361bd5ac177",
         "GUID:d8b63aba1907145bea998dd612889d6b",
         "GUID:b92ff8b696eb46a4b90382b319e963fe",
-        "GUID:4ddf3b42d139a401982db47a348d0355"
+        "GUID:4ddf3b42d139a401982db47a348d0355",
+        "GUID:e0cd26848372d4e5c891c569017e11f1",
+        "GUID:a5baed0c9693541a5bd947d336ec7659"
     ],
     "optionalUnityReferences": [
         "TestAssemblies"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
-    "allowUnsafeCode": false,
+    "allowUnsafeCode": true,
     "overrideReferences": false,
     "precompiledReferences": [],
     "autoReferenced": true,

@@ -1,7 +1,6 @@
 using System.Collections.Generic;
 using Unity.Entities;
 using UnityEngine;
-using UnityEngine.Serialization;
 
 public struct AppleSpawner : IComponentData
 {
@@ -15,12 +14,15 @@ public struct AppleSpawner : IComponentData
 [RequiresEntityConversion]
 public class AppleSpawnerProxy : MonoBehaviour, IConvertGameObjectToEntity, IDeclareReferencedPrefabs
 {
-    [FormerlySerializedAs("AppleRadius")] public float      appleRadius;
-    [FormerlySerializedAs("CountPerTree")] public int        countPerTree;
-    [FormerlySerializedAs("Prefab")] public GameObject prefab;
-    [FormerlySerializedAs("SpawnRadius")] public float      spawnRadius;
+    public float      appleRadius;
+    public int        countPerTree;
+    public GameObject prefab;
+    public float      spawnRadius;
 
-    public void Convert(Entity entity, EntityManager manager, GameObjectConversionSystem conversionSystem)
+    public void Convert(
+        Entity                     entity,
+        EntityManager              manager,
+        GameObjectConversionSystem conversionSystem)
     {
         var data = new AppleSpawner
         {
@@ -29,11 +31,9 @@ public class AppleSpawnerProxy : MonoBehaviour, IConvertGameObjectToEntity, IDec
             SpawnRadius  = spawnRadius,
             AppleRadius  = appleRadius
         };
+
         manager.AddComponentData(entity, data);
     }
 
-    public void DeclareReferencedPrefabs(List<GameObject> gameObjects)
-    {
-        gameObjects.Add(prefab);
-    }
+    public void DeclareReferencedPrefabs(List<GameObject> gameObjects) { gameObjects.Add(prefab); }
 }
