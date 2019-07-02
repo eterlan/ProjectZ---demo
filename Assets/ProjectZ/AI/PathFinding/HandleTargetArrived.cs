@@ -23,7 +23,6 @@ namespace ProjectZ.AI.PathFinding
                 {
                     var length = math.lengthsq(target.Position - translation.Value);
                     movementSpeed.Speed = math.lerp(movementSpeed.Speed, length > 1f ? movementSpeed.MaximumSpeed : 0f, movementSpeed.LerpSpeed);
-                    Debug.Log(length);
                 });
 
             Entities.ForEach(

@@ -45,7 +45,7 @@ namespace ProjectZ.AI
         // PURE ECS
         // @Todo 为了计算buffer长度，花了这么多功夫，是否应该直接传值进来？
         [BurstCompile]
-        public NativeArray<int> FindMaximum<T>(out JobHandle handle)
+        public NativeArray<int> FindMaximum<T>(out JobHandle handle) 
             where T : struct, IBufferElementData
         {
             var query    = GetEntityQuery(ComponentType.ReadOnly<T>());

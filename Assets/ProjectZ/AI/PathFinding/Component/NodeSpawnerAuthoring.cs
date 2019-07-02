@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace ProjectZ.AI.PathFinding
 {
-    public struct Spawner : ISystemStateComponentData
+    public struct NodeSpawner : ISystemStateComponentData
     {
         public int2 Count;
 
@@ -15,7 +15,7 @@ namespace ProjectZ.AI.PathFinding
 
     [RequireComponent(typeof(ConvertToEntity))]
     [RequiresEntityConversion]
-    public class SpawnerAuthoring : MonoBehaviour, IConvertGameObjectToEntity, IDeclareReferencedPrefabs
+    public class NodeSpawnerAuthoring : MonoBehaviour, IConvertGameObjectToEntity, IDeclareReferencedPrefabs
     {
         public GameObject Normal;
         public GameObject Obstacle;
@@ -32,7 +32,7 @@ namespace ProjectZ.AI.PathFinding
          EntityManager              manager,
          GameObjectConversionSystem conversionSystem)
         {
-            var data = new Spawner
+            var data = new NodeSpawner
             {
                 Count    = Count,
                 Normal   = conversionSystem.GetPrimaryEntity(Normal),
@@ -40,7 +40,8 @@ namespace ProjectZ.AI.PathFinding
             };
 
             manager.AddComponentData(entity, data);
-            var query = manager.CreateEntityQuery(typeof(Spawner));
+            var query = manager.CreateEntityQuery(typeof(NodeSpawner));
+
             Debug.Log(query.CalculateLength());
             query.SetSingleton(data);
         }

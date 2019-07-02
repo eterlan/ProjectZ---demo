@@ -8,6 +8,7 @@ using UnityEngine;
 
 namespace ProjectZ.AI.PathFinding
 {
+    // @Todo: 只在所有query都不为0的情况下才运行。
     [UpdateInGroup(typeof(PathFindingGroup))]
     [UpdateAfter(typeof(SpawnNodeSystem))]
     public class PathFinding : JobComponentSystem
@@ -34,8 +35,8 @@ namespace ProjectZ.AI.PathFinding
             public       int                    NodeCount;
         }
 
-        private Grid                  m_grid;
-        private List<PathFindingInfo> m_pathFindingInfos = new List<PathFindingInfo>(10);
+        private          Grid                  m_grid;
+        private readonly List<PathFindingInfo> m_pathFindingInfos = new List<PathFindingInfo>(10);
 
         private struct PathFindingInfo
         {
@@ -46,23 +47,40 @@ namespace ProjectZ.AI.PathFinding
             public NativeList<int2>   Path;
         }
 
-
         protected override JobHandle OnUpdate(JobHandle inputDependency)
         {
-            var requestsCount = m_requestGroup.CalculateLength();
+            // @Test: I guess it's slower, because the ParentSystem doesn't do this.
+            // var requestsCount   = m_requestGroup.CalculateLength();
+            // if (requestsCount == 0) { return inputDependency; }
+
+            var requestEntities = m_requestGroup.ToEntityArray(Allocator.TempJob);
+            var requests        = m_requestGroup.ToComponentDataArray<PathFindingRequest>(Allocator.TempJob);
+            //var pathPlanners    = GetBufferFromEntity<PathPlanner>();
+            var processingRequestCount = math.min(MaximumFindingCount, requestEntities.Length);
 
             // 如果没有请求就返回。
-            if (requestsCount == 0) { return inputDependency; }
 
-            for (var scheduledIndex = 0; scheduledIndex < MaximumFindingCount; scheduledIndex++)
+            for (var scheduledIndex = 0;
+                scheduledIndex < processingRequestCount;
+                scheduledIndex++)
             {
+                //@Bug: 在这里过早退出，导致dispose没有被运行。
+
+                var requestEntity = requestEntities[scheduledIndex];
+                //var pathPlanner   = pathPlanners[requestEntity];
+                var pathPlanner = EntityManager.GetBuffer<PathPlanner>(requestEntity);
+                var request     = requests[scheduledIndex];
+
                 var parentIndex = new NativeArray<int>(m_grid.NodeCount, Allocator.TempJob);
                 var costSoFar   = new NativeArray<float>(m_grid.NodeCount, Allocator.TempJob);
                 var closeSet    = new NativeList<int>(10, Allocator.TempJob);
                 var openSet     = new NativeMinHeap(m_grid.NodeCount, Allocator.TempJob);
                 var path        = new NativeList<int2>(10, Allocator.TempJob);
 
-                for (var nodeIndex = 0; nodeIndex < m_grid.NodeCount; nodeIndex++) { costSoFar[nodeIndex] = float.PositiveInfinity; }
+                for (var nodeIndex = 0; nodeIndex < m_grid.NodeCount; nodeIndex++)
+                {
+                    costSoFar[nodeIndex] = float.PositiveInfinity;
+                }
 
                 var newPathFindingInfo = new PathFindingInfo
                 {
@@ -88,42 +106,69 @@ namespace ProjectZ.AI.PathFinding
 
                 var pathFindingJob = new PathFindingJob
                 {
-                    PathPlannerType        = GetArchetypeChunkBufferType<PathPlanner>(),
-                    PathFindingRequestType = GetArchetypeChunkComponentType<PathFindingRequest>(),
-                    PathFinderEntityType   = GetArchetypeChunkEntityType(),
-                    // @TODO: ToConcurrent
-                    CommandBuffer = m_commandBufferSystem.CreateCommandBuffer().ToConcurrent(),
-                    CostSoFar     = costSoFar,
-                    ParentIndex   = parentIndex,
-                    OpenSet       = openSet,
-                    CloseSet      = closeSet,
-                    Path          = path,
-                    NodeInfos     = m_grid.NodeInfos,
-                    Positions     = m_grid.Positions,
-                    GridSize      = m_grid.GridSize,
-                    Neighbours    = m_grid.Neighbours,
+                    PathFindingRequest = request,
+                    PathFinderEntity   = requestEntity,
+                    CommandBuffer      = m_commandBufferSystem.CreateCommandBuffer(),
+                    CostSoFar          = costSoFar,
+                    ParentIndex        = parentIndex,
+                    OpenSet            = openSet,
+                    CloseSet           = closeSet,
+                    Path               = path,
+                    NodeInfos          = m_grid.NodeInfos,
+                    Positions          = m_grid.Positions,
+                    GridSize           = m_grid.GridSize,
+                    Neighbours         = m_grid.Neighbours,
                 };
 
-                var pathFindingJobHandle = pathFindingJob.Schedule(m_requestGroup, inputDependency);
-                inputDependency = pathFindingJobHandle;
-                // Add previous job to this Query' dependency.
-                m_requestGroup.AddDependency(inputDependency);
+                // @Todo: why this doesn't work? It should add previous job as dependency.
+                var pathFindingJobHandle = pathFindingJob.Schedule(inputDependency);
+
+                var writePathJob = new WritePath
+                {
+                    RequestEntity = requestEntity,
+                    CommandBuffer = m_commandBufferSystem.CreateCommandBuffer(),
+                    PathPlanner   = pathPlanner,
+                    Path          = path,
+                };
+
+                var writePathJobHandle = writePathJob.Schedule(pathFindingJobHandle);
+                inputDependency = writePathJobHandle;
+                inputDependency.Complete();
+
+
+                // Don't add previous job to this Query' dependency.
+                //m_requestGroup.AddDependency(inputDependency);
                 // Add every job to commandBufferSystem's dependency.
                 m_commandBufferSystem.AddJobHandleForProducer(inputDependency);
                 // @Bug: Atomic detect.
             }
 
+            requestEntities.Dispose();
+            requests.Dispose();
             return inputDependency;
         }
 
-        private struct PathFindingJob : IJobChunk
+        private struct WritePath : IJob
         {
-            // @Todo: Move to another Job.
-            public ArchetypeChunkBufferType<PathPlanner> PathPlannerType;
+            public Entity                     RequestEntity;
+            public EntityCommandBuffer        CommandBuffer;
+            public DynamicBuffer<PathPlanner> PathPlanner;
+            public NativeList<int2>           Path;
 
-            [ReadOnly] public ArchetypeChunkComponentType<PathFindingRequest> PathFindingRequestType;
-            [ReadOnly] public ArchetypeChunkEntityType                        PathFinderEntityType;
-            public            EntityCommandBuffer.Concurrent                  CommandBuffer;
+            public void Execute()
+            {
+                var pathLength = Path.Length;
+
+                for (var i = pathLength - 1; i >= 0; i--) { PathPlanner.Add(new PathPlanner {NextPosition = Path[i]}); }
+                CommandBuffer.RemoveComponent<PathFindingRequest>(RequestEntity);
+            }
+        }
+
+        private struct PathFindingJob : IJob
+        {
+            [ReadOnly] public PathFindingRequest  PathFindingRequest;
+            [ReadOnly] public Entity              PathFinderEntity;
+            public            EntityCommandBuffer CommandBuffer;
 
             public NativeArray<float> CostSoFar;
             public NativeArray<int>   ParentIndex;
@@ -152,42 +197,24 @@ namespace ProjectZ.AI.PathFinding
                 return Path;
             }
 
-            public void Execute
-            (ArchetypeChunk chunk,
-             int            chunkIndex,
-             int            firstEntityIndex)
+            public void Execute()
             {
-                // DidChange
-                var b0 = chunk.GetBufferAccessor(PathPlannerType);
-                var c0 = chunk.GetNativeArray(PathFindingRequestType);
-                var e0 = chunk.GetNativeArray(PathFinderEntityType);
-
-                for (var index = 0; index < chunk.Count; index++)
+                // not legal request, return.
+                if (PathFindingRequest.StartIndex == PathFindingRequest.EndIndex)
                 {
-                    var pathPlanner = b0[index];
-                    var request     = c0[index];
-                    var pathFinder  = e0[index];
+                    CommandBuffer.RemoveComponent<PathFindingRequest>(PathFinderEntity);
+                    return;
+                }
 
-                    // not legal request, return.
-                    if (request.StartIndex == request.EndIndex)
-                    {
-                        CommandBuffer.RemoveComponent<PathFindingRequest>(chunkIndex, pathFinder);
-                        return;
-                    }
+                var path       = FindPath(PathFindingRequest.StartIndex, PathFindingRequest.EndIndex);
+                var pathLength = path.Length;
 
-                    var path       = FindPath(request.StartIndex, request.EndIndex);
-                    var pathLength = path.Length;
-
-                    // @Todo: isolated area should be determined before path finding.
-                    // path not found. return.
-                    if (pathLength == 0)
-                    {
-                        CommandBuffer.RemoveComponent<PathFindingRequest>(chunkIndex, pathFinder);
-                        return;
-                    }
-
-                    for (var i = pathLength - 1; i >= 0; i--) { pathPlanner.Add(new PathPlanner {NextPosition = path[i]}); }
-                    CommandBuffer.RemoveComponent<PathFindingRequest>(chunkIndex, pathFinder);
+                // @Todo: isolated area should be determined before path finding.
+                // path not found. return.
+                if (pathLength == 0)
+                {
+                    CommandBuffer.RemoveComponent<PathFindingRequest>(PathFinderEntity);
+                    return;
                 }
             }
 
@@ -209,8 +236,9 @@ namespace ProjectZ.AI.PathFinding
 
                     for (var index = 0; index < Neighbours.Length; index++)
                     {
-                        var neighbour        = Neighbours[index];
-                        var neighbourIsValid = GetIndexFromValidOffset(currentIndex, neighbour.Offset, out var neighbourIndex);
+                        var neighbour = Neighbours[index];
+                        var neighbourIsValid =
+                            GetIndexFromValidOffset(currentIndex, neighbour.Offset, out var neighbourIndex);
 
                         if (!neighbourIsValid)
                             continue;
@@ -272,15 +300,36 @@ namespace ProjectZ.AI.PathFinding
 
         protected override void OnStartRunning()
         {
+            InitializeGrid();
             FillNodeInfos();
+            FillNeighbours();
+
+            void InitializeGrid()
+            {
+                // var spawnerQuery = EntityManager.CreateEntityQuery(typeof(Spawner));
+                // Debug.Log(spawnerQuery.CalculateLength());
+                //  var size = spawnerQuery.GetSingleton<Spawner>().Count;
+                var size = GetSingleton<NodeSpawner>().Count;
+
+                var nodeCount = size.x * size.y;
+                m_grid = new Grid
+                {
+                    NodeCount = nodeCount,
+                    GridSize  = size,
+                    NodeInfos = new NativeArray<NodeInfo>(nodeCount, Allocator.Persistent),
+                    Positions = new NativeArray<int2>(nodeCount, Allocator.Persistent),
+                };
+            }
+
             void FillNodeInfos()
             {
                 var translations = m_nodeQuery.ToComponentDataArray<Translation>(Allocator.TempJob);
                 var nodeInfos    = m_nodeQuery.ToComponentDataArray<NodeInfo>(Allocator.TempJob);
-                
-                Debug.Log($"In OnCreate, NodeLength: {nodeInfos.Length}");
+                var nodeCount    = translations.Length;
 
-                for (var i = 0; i < translations.Length; i++)
+                Debug.Log($"In OnRunning, NodeLength: {nodeInfos.Length}");
+
+                for (var i = 0; i < nodeCount; i++)
                 {
                     var index       = nodeInfos[i].Index;
                     var translation = translations[i];
@@ -292,34 +341,7 @@ namespace ProjectZ.AI.PathFinding
                 translations.Dispose();
                 nodeInfos.Dispose();
             }
-        }
-        
-        protected override void OnCreate()
-        {
-            m_requestGroup        = GetEntityQuery(ComponentType.ReadWrite<PathPlanner>(), ComponentType.ReadOnly<PathFindingRequest>());
-            m_nodeQuery           = GetEntityQuery(ComponentType.ReadOnly<Translation>(), ComponentType.ReadOnly<NodeInfo>());
-            m_commandBufferSystem = World.GetOrCreateSystem<EndSimulationEntityCommandBufferSystem>();
 
-            InitializeGrid();
-            FillNeighbours();
-
-            void InitializeGrid()
-            {
-                // var spawnerQuery = EntityManager.CreateEntityQuery(typeof(Spawner));
-                // Debug.Log(spawnerQuery.CalculateLength());
-                //  var size = spawnerQuery.GetSingleton<Spawner>().Count;
-                // @Todo: Hard code. Wait for run time to fix it.
-                var size = new int2(10, 10);
-                m_grid.NodeCount = size.x * size.y;
-                m_grid = new Grid
-                {
-                    GridSize  = size,
-                    NodeInfos = new NativeArray<NodeInfo>(m_grid.NodeCount, Allocator.Persistent),
-                    Positions = new NativeArray<int2>(m_grid.NodeCount, Allocator.Persistent),
-                };
-
-            }
-            
             void FillNeighbours()
             {
                 m_grid.Neighbours = new NativeArray<Neighbour>(Grid.NeighbourCount, Allocator.Persistent)
@@ -334,6 +356,19 @@ namespace ProjectZ.AI.PathFinding
                     [7] = new Neighbour(new int2(Grid.Unit, -Grid.Unit), Grid.InclineUnit)
                 };
             }
+        }
+
+        protected override void OnCreate()
+        {
+            m_requestGroup = GetEntityQuery(ComponentType.ReadWrite<PathPlanner>(),
+                ComponentType.ReadOnly<PathFindingRequest>());
+
+            m_nodeQuery =
+                GetEntityQuery(ComponentType.ReadOnly<Translation>(), ComponentType.ReadOnly<NodeInfo>());
+
+            RequireForUpdate(m_requestGroup);
+            // @Todo: Should I move initialize grid to OnCreate()? Because I doesn't need to reinitialize grid after this system stop running from a period.
+            m_commandBufferSystem = World.GetOrCreateSystem<EndSimulationEntityCommandBufferSystem>();
         }
 
 

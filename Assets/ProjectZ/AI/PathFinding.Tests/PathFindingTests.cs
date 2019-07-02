@@ -20,11 +20,11 @@ namespace ProjectZ.AI.PathFinding.Tests
             m_player = m_Manager.CreateEntity(typeof(MoveSpeed), typeof(Translation), typeof(LocalToWorld), typeof(NavigateTarget));
             m_Manager.SetComponentData(m_player, new NavigateTarget {Position = new float3(10, 0, 10)});
             m_Manager.SetComponentData(m_player, new MoveSpeed {Speed         = 3, MaximumSpeed = 5});
-            Spawner spawner = new Spawner {Count = new int2(10, 10)};
-            m_Manager.CreateEntity(typeof(Spawner));
-            var spawnerQuery = m_Manager.CreateEntityQuery(typeof(Spawner));
+            NodeSpawner nodeSpawner = new NodeSpawner {Count = new int2(10, 10)};
+            m_Manager.CreateEntity(typeof(NodeSpawner));
+            var spawnerQuery = m_Manager.CreateEntityQuery(typeof(NodeSpawner));
             Debug.Log(spawnerQuery.CalculateLength());
-            spawnerQuery.SetSingleton(spawner);
+            spawnerQuery.SetSingleton(nodeSpawner);
         }
 
         [Test]
