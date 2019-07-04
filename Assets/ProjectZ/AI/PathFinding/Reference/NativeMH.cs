@@ -51,7 +51,11 @@ namespace BovineLabs.Systems.World.Pathfinding
             nativeMinHeap.m_length = 0;
  
 #if ENABLE_UNITY_COLLECTIONS_CHECKS
+#if UNITY_2018_3_OR_NEWER
             DisposeSentinel.Create(out nativeMinHeap.m_Safety, out nativeMinHeap.m_DisposeSentinel, 1, allocator);
+#else
+            DisposeSentinel.Create(out nativeMinHeap.m_Safety, out nativeMinHeap.m_DisposeSentinel, 1);
+#endif
 #endif
  
  

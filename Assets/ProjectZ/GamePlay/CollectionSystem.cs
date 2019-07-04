@@ -61,8 +61,8 @@ namespace ProjectZ.GamePlay
                     };
                     var overlapFlter = new CollisionFilter
                     {
-                        CategoryBits = playerFilter.CategoryBits, // 1 = 0001
-                        MaskBits     = m_itemCategoryBits         // 2 = 0010
+                        BelongsTo = playerFilter.BelongsTo, // 1 = 0001
+                        CollidesWith     = m_itemCategoryBits         // 2 = 0010
                     };
                     var input = new OverlapAabbInput
                     {

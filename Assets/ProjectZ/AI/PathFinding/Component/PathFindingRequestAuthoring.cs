@@ -1,20 +1,21 @@
 using Unity.Entities;
+using Unity.Mathematics;
 using UnityEngine;
 
 namespace ProjectZ.AI.PathFinding
 {
     public struct PathFindingRequest : IComponentData
     {
-        public int StartIndex;
-        public int EndIndex;
+        public float3 StartPosition;
+        public float3 EndPosition;
     }
 
     [RequireComponent(typeof(ConvertToEntity))]
     [RequiresEntityConversion]
     public class PathFindingRequestAuthoring : MonoBehaviour, IConvertGameObjectToEntity
     {
-        public int StartIndex;
-        public int EndIndex;
+        public float3 StartIndex;
+        public float3 EndIndex;
         public void Convert
         (Entity                     entity,
          EntityManager              manager,
@@ -22,8 +23,8 @@ namespace ProjectZ.AI.PathFinding
         {
             var data = new PathFindingRequest
             {
-                StartIndex = StartIndex,
-                EndIndex = EndIndex,
+                StartPosition = StartIndex,
+                EndPosition = EndIndex,
             };
 
             manager.AddComponentData(entity, data);

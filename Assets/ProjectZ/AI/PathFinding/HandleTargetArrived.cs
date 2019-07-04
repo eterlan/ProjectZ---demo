@@ -16,6 +16,7 @@ namespace ProjectZ.AI.PathFinding
         {
             // @Todo: 是否应该把Rotate也放过来？
             // @Todo: RotateSpeed改名。
+            // @Todo: 一开始target为0，0 导致全部跑过来了
             Entities.ForEach(
                 (ref MoveSpeed      movementSpeed,
                  ref NavigateTarget target,

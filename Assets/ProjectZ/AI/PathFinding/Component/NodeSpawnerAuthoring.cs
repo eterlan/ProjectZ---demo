@@ -8,9 +8,11 @@ namespace ProjectZ.AI.PathFinding
     public struct NodeSpawner : ISystemStateComponentData
     {
         public int2 Count;
+        public float3 Position;
 
         public Entity Normal;
         public Entity Obstacle;
+        public int Space;
     }
 
     [RequireComponent(typeof(ConvertToEntity))]
@@ -20,6 +22,7 @@ namespace ProjectZ.AI.PathFinding
         public GameObject Normal;
         public GameObject Obstacle;
         public int2       Count;
+        public int Space;
 
         public void DeclareReferencedPrefabs(List<GameObject> referencedPrefabs)
         {
@@ -37,12 +40,12 @@ namespace ProjectZ.AI.PathFinding
                 Count    = Count,
                 Normal   = conversionSystem.GetPrimaryEntity(Normal),
                 Obstacle = conversionSystem.GetPrimaryEntity(Obstacle),
+                Space =  Space,
             };
 
             manager.AddComponentData(entity, data);
             var query = manager.CreateEntityQuery(typeof(NodeSpawner));
 
-            Debug.Log(query.CalculateLength());
             query.SetSingleton(data);
         }
     }
