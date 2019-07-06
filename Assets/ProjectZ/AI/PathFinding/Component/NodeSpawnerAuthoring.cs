@@ -12,7 +12,8 @@ namespace ProjectZ.AI.PathFinding
 
         public Entity Normal;
         public Entity Obstacle;
-        public int Space;
+        public int NodeSpace;
+        public float ObstacleChance;
     }
 
     [RequireComponent(typeof(ConvertToEntity))]
@@ -22,6 +23,9 @@ namespace ProjectZ.AI.PathFinding
         public GameObject Normal;
         public GameObject Obstacle;
         public int2       Count;
+        [Range(0,0.5f)]
+        public float ObstacleChance;
+
         public int Space;
 
         public void DeclareReferencedPrefabs(List<GameObject> referencedPrefabs)
@@ -40,7 +44,8 @@ namespace ProjectZ.AI.PathFinding
                 Count    = Count,
                 Normal   = conversionSystem.GetPrimaryEntity(Normal),
                 Obstacle = conversionSystem.GetPrimaryEntity(Obstacle),
-                Space =  Space,
+                NodeSpace =  Space,
+                ObstacleChance = ObstacleChance,
             };
 
             manager.AddComponentData(entity, data);

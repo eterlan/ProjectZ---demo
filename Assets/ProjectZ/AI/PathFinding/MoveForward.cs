@@ -23,6 +23,7 @@ namespace ProjectZ.AI.PathFinding
                     var dPos   = localToWorld.Forward * dT * movSpeed.Speed;
                     var newPos = translation.Value + dPos;
                     translation.Value = newPos;
+                    //Debug.Log($"newPos: {newPos}");
                 });
             
             return;

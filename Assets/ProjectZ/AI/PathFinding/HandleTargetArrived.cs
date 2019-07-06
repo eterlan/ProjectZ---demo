@@ -32,12 +32,18 @@ namespace ProjectZ.AI.PathFinding
                  ref NavigateTarget         target) =>
                 {
                     var count = target.Count;
-
+                    if (count == 0 && path.Length != 0)
+                    {
+                        // has to set target to self position to read next target.
+                        target.Position.x = path[count].NextPosition.x;
+                        target.Position.z = path[count].NextPosition.y;
+                    }
                     // while pathPlanner has NextPosition.
+                    // @Bug: else if 之后一直卡在上个条件，没有出去的方法。
                     if (count < path.Length)
                     {
                         // if arrived, change to Next target.
-                        if (math.lengthsq(target.Position - translation.Value) > 1f) return;
+                        if (math.lengthsq(target.Position - translation.Value) > 3f) return;
                         target.Position.x = path[count].NextPosition.x;
                         target.Position.z = path[count].NextPosition.y;
                         target.Count++;
@@ -48,6 +54,8 @@ namespace ProjectZ.AI.PathFinding
                         target.Count = 0;
                         path.Clear();
                     }
+
+                  
                 });
         }
 

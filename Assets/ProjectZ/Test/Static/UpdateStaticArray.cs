@@ -1,4 +1,5 @@
 using Unity.Entities;
+using UnityEngine;
 
 namespace ProjectZ.Test.Static
 {
@@ -6,6 +7,7 @@ namespace ProjectZ.Test.Static
     {
         protected override void OnUpdate()
         {
+            Debug.Log($"update{S.Values[0]}");
             S.Values[0] += 3;
             Entities.ForEach((ref S s) =>
             {

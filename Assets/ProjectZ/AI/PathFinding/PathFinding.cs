@@ -1,12 +1,10 @@
-using System.Collections.Specialized;
-using System.Text;
 using ProjectZ.AI.PathFinding.Container;
+using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Jobs;
 using Unity.Mathematics;
 using Unity.Transforms;
-using UnityEngine;
 
 namespace ProjectZ.AI.PathFinding
 {
@@ -19,27 +17,25 @@ namespace ProjectZ.AI.PathFinding
         private       EntityQuery                            m_requestGroup;
         private       EntityQuery                            m_nodeQuery;
         private       EndSimulationEntityCommandBufferSystem m_commandBufferSystem;
-        private const int                                    MaximumFindingCount = 3;
+        private const int                                    MaxProccessCount = 3;
         private       Grid                                   m_grid;
 
         private struct Grid
         {
-            public int2 GridSize;
-
-            // @Todo: should initialize by node spawner position?
-            public static int2 Zero = int2.zero;
-
             // Node Index
-            public NativeArray<NodeInfo> NodeInfos;
-            public NativeArray<int2>     Positions;
+            public NativeArray<NodeInfo>  NodeInfos;
+            public NativeArray<int2>      Positions;
+            public NativeArray<Neighbour> Neighbours;
 
-            public       NativeArray<Neighbour> Neighbours;
-            public const int                    UnitCost       = Unit * Unit2Pos;
-            public const int                    Unit2Pos       = 10;
-            public const int                    Unit           = 1;
-            public const float                  InclineUnit    = Unit * math.SQRT2;
-            public const int                    NeighbourCount = 8;
-            public       int                    NodeCount;
+            public int  NodeCount;
+            public int2 GridSize;
+            public int2 Zero;
+            public int  UnitCost;
+            public int  DistancePerUnit;
+
+            public const int   Unit           = 1;
+            public const float InclineUnit    = Unit * math.SQRT2;
+            public const int   NeighbourCount = 8;
         }
 
         private struct PathFindingInfo
@@ -55,20 +51,27 @@ namespace ProjectZ.AI.PathFinding
         {
             var requestEntities        = m_requestGroup.ToEntityArray(Allocator.TempJob);
             var requests               = m_requestGroup.ToComponentDataArray<PathFindingRequest>(Allocator.TempJob);
-            var processingRequestCount = math.min(MaximumFindingCount, requestEntities.Length);
-
-            Debug.Log(processingRequestCount);
-
-            System.Collections.Specialized.ListDictionary i = new ListDictionary();
-            i.Add(1,1);
-
-            for (var scheduledIndex = 0;
-                scheduledIndex < processingRequestCount;
-                scheduledIndex++)
+            var processingRequestCount = math.min(MaxProccessCount, requestEntities.Length);
+            var pathPlanners =
+                new NativeArray<DynamicBuffer<PathPlanner>>(MaxProccessCount, Allocator.TempJob);
+            for (var i = 0;
+                i < processingRequestCount;
+                i++)
             {
-                var requestEntity = requestEntities[scheduledIndex];
-                var pathPlanner   = EntityManager.GetBuffer<PathPlanner>(requestEntity);
-                var request       = requests[scheduledIndex];
+                var entity      = requestEntities[i];
+                var pathPlanner = EntityManager.GetBuffer<PathPlanner>(entity);
+                pathPlanners[i] = pathPlanner;
+            }
+
+            for (var i = 0;
+                i < processingRequestCount;
+                i++)
+            {
+                var requestEntity = requestEntities[i];
+                // @Bug 因为在主线程获取Component没有dependency，因此在loop中使用会导致报错：上一个Job还未完成又被获取了写入权限。
+                // var pathPlanner = EntityManager.GetBuffer<PathPlanner>(requestEntity);
+                var pathPlanner = pathPlanners[i];
+                var request     = requests[i];
 
                 var parentIndex = new NativeArray<int>(m_grid.NodeCount, Allocator.TempJob);
                 var costSoFar   = new NativeArray<float>(m_grid.NodeCount, Allocator.TempJob);
@@ -92,20 +95,21 @@ namespace ProjectZ.AI.PathFinding
 
                 var pathFindingJob = new PathFindingJob
                 {
-                    Unit2Pos           = Grid.Unit2Pos,
-                    GridZero           = Grid.Zero,
+                    Unit2Dist          = m_grid.DistancePerUnit,
+                    UnitCost           = m_grid.UnitCost,
+                    GridZero           = m_grid.Zero,
                     PathFindingRequest = request,
-                    PathFinderEntity   = requestEntity,
-                    CommandBuffer      = m_commandBufferSystem.CreateCommandBuffer(),
-                    CostSoFar          = newPathFindingInfo.CostSoFar,
-                    ParentIndex        = newPathFindingInfo.ParentIndex,
-                    OpenSet            = newPathFindingInfo.OpenSet,
-                    CloseSet           = newPathFindingInfo.CloseSet,
-                    Path               = newPathFindingInfo.Path,
-                    NodeInfos          = m_grid.NodeInfos,
-                    Positions          = m_grid.Positions,
-                    GridSize           = m_grid.GridSize,
-                    Neighbours         = m_grid.Neighbours,
+                    // PathFinderEntity   = requestEntity,
+                    // CommandBuffer      = m_commandBufferSystem.CreateCommandBuffer(),
+                    CostSoFar   = newPathFindingInfo.CostSoFar,
+                    ParentIndex = newPathFindingInfo.ParentIndex,
+                    OpenSet     = newPathFindingInfo.OpenSet,
+                    CloseSet    = newPathFindingInfo.CloseSet,
+                    Path        = newPathFindingInfo.Path,
+                    NodeInfos   = m_grid.NodeInfos,
+                    Positions   = m_grid.Positions,
+                    GridSize    = m_grid.GridSize,
+                    Neighbours  = m_grid.Neighbours,
                 };
 
                 var pathFindingJobHandle = pathFindingJob.Schedule(inputDependency);
@@ -123,7 +127,7 @@ namespace ProjectZ.AI.PathFinding
                 closeSet.Dispose(pathFindingJobHandle);
                 path.Dispose(writePathJobHandle);
                 inputDependency = writePathJobHandle;
-                inputDependency.Complete();
+                //inputDependency.Complete();
 
                 m_commandBufferSystem.AddJobHandleForProducer(inputDependency);
                 // @Bug: Atomic detect.
@@ -131,16 +135,21 @@ namespace ProjectZ.AI.PathFinding
 
             requestEntities.Dispose();
             requests.Dispose();
+            pathPlanners.Dispose();
+
             return inputDependency;
         }
 
+        [BurstCompile]
         private struct PathFindingJob : IJob
         {
-            public            int                 Unit2Pos;
-            public            int2                GridZero;
-            [ReadOnly] public PathFindingRequest  PathFindingRequest;
-            [ReadOnly] public Entity              PathFinderEntity;
-            public            EntityCommandBuffer CommandBuffer;
+            public int  Unit2Dist;
+            public int  UnitCost;
+            public int2 GridZero;
+
+            [ReadOnly] public PathFindingRequest PathFindingRequest;
+            // [ReadOnly] public Entity              PathFinderEntity;
+            // public            EntityCommandBuffer CommandBuffer;
 
             [DeallocateOnJobCompletion]
             public NativeArray<float> CostSoFar;
@@ -159,68 +168,67 @@ namespace ProjectZ.AI.PathFinding
             [ReadOnly] public int2                   GridSize;
             [ReadOnly] public NativeArray<Neighbour> Neighbours;
 
-            private NativeList<int2> ConstructPath(int startIndex, int endIndex)
-            {
-                var sb = new StringBuilder();
-                var parentIndex = endIndex;
-                sb.Append($"Path found! end");
-                while (parentIndex != startIndex)
-                {
-                    var position = Positions[parentIndex];
-                    Path.Add(position);
-                    sb.Append($" <- pos:{position}");
-                    // @Todo: Add to buffer.
-                    parentIndex = ParentIndex[parentIndex];
-                }
-
-                sb.Append($" <- start.");
-                Debug.Log(sb);
-
-                return Path;
-            }
-
-            public enum PathFindingFailedReason
-            {
-                None,
-                PathNotValid,
-                EndNotAccessible,
-            }
-
             public void Execute()
             {
                 // not legal request, return.
-                if (math.distancesq(PathFindingRequest.StartPosition, PathFindingRequest.EndPosition)<1f)
+                if (math.distancesq(PathFindingRequest.StartPosition, PathFindingRequest.EndPosition) < 1f)
                 {
-                    PathFound(false, PathFindingFailedReason.PathNotValid);
+                    // PathFound(false, PathFindingFailedReason.StartEqualEnd);
                     return;
                 }
 
                 var startIndex = ConvertPosToIndex(PathFindingRequest.StartPosition);
                 var endIndex   = ConvertPosToIndex(PathFindingRequest.EndPosition);
-                Debug.Log($"startIndex{startIndex}, endIndex{endIndex}");
-                var path       = FindPath(startIndex,endIndex);
-                var pathLength = path.Length;
+                endIndex = SelectValidEndIndex(startIndex,endIndex);
+                FindPath(startIndex, endIndex);
+            }
 
-                if (pathLength == 0) { PathFound(true); }
+            private void ConstructPath(int startIndex, int endIndex)
+            {
+                var parentIndex = endIndex;
+                //var sb = new StringBuilder();
+                //sb.Append("PathList: end <-");
+
+                while (parentIndex != startIndex)
+                {
+                    var position = Positions[parentIndex];
+                    Path.Add(position);
+                    //sb.Append($" {position} <-");
+                    parentIndex = ParentIndex[parentIndex];
+                }
+
+                //sb.Append($" start");
+                //Debug.Log(sb);
             }
 
             private int ConvertPosToIndex(float3 position)
             {
-                var x = ConvertPosToIndex(position.x - GridZero.x);
-                var y = ConvertPosToIndex(position.z - GridZero.y);
+                var x     = ConvertPosToIndex(position.x - GridZero.x);
+                var y     = ConvertPosToIndex(position.z - GridZero.y);
                 var index = x + y * GridSize.x;
+                math.clamp(index, 0, GridSize.x * GridSize.y);
                 return index;
+            }
+
+            private int SelectValidEndIndex(int startIndex, int endIndex)
+            {
+                if (startIndex == endIndex) { endIndex++; }
+                while (!NodeInfos[endIndex].Walkable)
+                {
+                    endIndex++;
+                }
+                return endIndex;
             }
 
             private int ConvertPosToIndex(float position)
             {
                 var temp = (int) position;
-                var ones = temp % Unit2Pos;
-                temp -= ones + math.select(Unit2Pos, 0, ones < Unit2Pos/2);
-                return temp / Unit2Pos;
+                var ones = temp % Unit2Dist;
+                temp -= ones + math.select(Unit2Dist, 0, ones < Unit2Dist / 2);
+                return temp / Unit2Dist;
             }
 
-            private NativeList<int2> FindPath(int startIndex, int endIndex)
+            private void FindPath(int startIndex, int endIndex)
             {
                 // OpenSet wait to be explore. It should only explore once, and each time should explore the most possible node. Which means the node with lowest F. F = G + H. G is the total cost coming to this point. H is roughly guessing remaining cost to the goal.
                 // @Bug: Must manually assign initial cost to 0, else it would be infinity.
@@ -234,7 +242,11 @@ namespace ProjectZ.AI.PathFinding
                     var current      = OpenSet[heapIndex];
                     var currentIndex = current.Index;
 
-                    if (currentIndex == endIndex) { return ConstructPath(startIndex, endIndex); }
+                    if (currentIndex == endIndex)
+                    {
+                        ConstructPath(startIndex, endIndex); 
+                        return;
+                    }
 
                     for (var index = 0; index < Neighbours.Length; index++)
                     {
@@ -251,7 +263,7 @@ namespace ProjectZ.AI.PathFinding
 
                         if (!walkable) continue;
 
-                        var newCost = CostSoFar[currentIndex] + neighbour.Cost * Grid.UnitCost;
+                        var newCost = CostSoFar[currentIndex] + neighbour.Cost * UnitCost;
                         var oldCost = CostSoFar[neighbourIndex];
 
                         if (newCost >= oldCost) continue;
@@ -264,7 +276,7 @@ namespace ProjectZ.AI.PathFinding
                     }
                 }
 
-                PathFound(false, PathFindingFailedReason.EndNotAccessible);
+                // PathFound(false, PathFindingFailedReason.EndNotAccessible);
 
                 float H(int2 current, int2 end)
                 {
@@ -275,8 +287,6 @@ namespace ProjectZ.AI.PathFinding
                     //return math.distancesq(current, end);
                     // @Todo Test Speed
                 }
-
-                return Path;
             }
 
             private bool GetIndexFromValidOffset
@@ -300,13 +310,11 @@ namespace ProjectZ.AI.PathFinding
             }
 
             // @Todo: burst doesn't support Debug. Change to exception?
-            private void PathFound(bool success, PathFindingFailedReason reason = PathFindingFailedReason.None)
-            {
-                if (!success)
-                    Debug.Log($"PathFinding Failed, reason is {reason.ToString()}");
-
-                CommandBuffer.RemoveComponent<PathFindingRequest>(PathFinderEntity);
-            }
+            // private void PathFound(bool success, PathFindingFailedReason reason = PathFindingFailedReason.None)
+            // {
+            //     if (!success)
+            //         Debug.Log($"PathFinding Failed, reason is {reason.ToString()}");
+            // }
         }
 
         private struct WritePath : IJob
@@ -318,22 +326,9 @@ namespace ProjectZ.AI.PathFinding
 
             public void Execute()
             {
-                var path = new StringBuilder();
-                var pathPlanner = new StringBuilder();
-                path.Append($"Path: ");
-                pathPlanner.Append($"PathPlanner: ");
-
                 var pathLength = Path.Length;
 
-                for (var i = pathLength - 1; i >= 0; i--)
-                {
-                    path.Append(Path[i]);
-                    pathPlanner.Append(Path[i]);
-                    PathPlanner.Add(new PathPlanner {NextPosition = Path[i]});
-                    Debug.Log(path);
-                    Debug.Log(pathPlanner);
-                }
-                //
+                for (var i = pathLength - 1; i >= 0; i--) { PathPlanner.Add(new PathPlanner {NextPosition = Path[i]}); }
                 CommandBuffer.RemoveComponent<PathFindingRequest>(RequestEntity);
             }
         }
@@ -342,16 +337,14 @@ namespace ProjectZ.AI.PathFinding
 
         protected override void OnStartRunning()
         {
+            var nodeSpawner = GetSingleton<NodeSpawner>();
             InitializeGrid();
             FillNodeInfos();
             FillNeighbours();
 
             void InitializeGrid()
             {
-                // var spawnerQuery = EntityManager.CreateEntityQuery(typeof(Spawner));
-                // Debug.Log(spawnerQuery.CalculateLength());
-                //  var size = spawnerQuery.GetSingleton<Spawner>().Count;
-                var size = GetSingleton<NodeSpawner>().Count;
+                var size = nodeSpawner.Count;
 
                 var nodeCount = size.x * size.y;
                 m_grid = new Grid
@@ -379,7 +372,9 @@ namespace ProjectZ.AI.PathFinding
                     m_grid.NodeInfos[index] = nodeInfo;
                 }
 
-                Grid.Zero = m_grid.Positions[0];
+                m_grid.Zero            = m_grid.Positions[0];
+                m_grid.DistancePerUnit = nodeSpawner.NodeSpace;
+                m_grid.UnitCost        = nodeSpawner.NodeSpace * Grid.Unit;
                 translations.Dispose();
                 nodeInfos.Dispose();
             }
@@ -433,4 +428,11 @@ namespace ProjectZ.AI.PathFinding
             Cost   = cost;
         }
     }
+}
+
+public enum PathFindingFailedReason
+{
+    None,
+    StartEqualEnd,
+    EndNotAccessible,
 }

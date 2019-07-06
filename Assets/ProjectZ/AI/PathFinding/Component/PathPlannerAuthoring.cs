@@ -5,6 +5,7 @@ using UnityEngine;
 
 namespace ProjectZ.AI.PathFinding
 {
+    [InternalBufferCapacity(10)]
     public struct PathPlanner : IBufferElementData
     {
         public int2 NextPosition;

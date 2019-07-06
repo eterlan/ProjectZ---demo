@@ -24,9 +24,9 @@ namespace ProjectZ.AI.PathFinding
             // @Todo: extend the map to 30 * 30
             // Set FinderSpawnerPosition according to node spawner pos.
             var nodeSpawner = GetSingleton<NodeSpawner>();
-            var nodeSpawnerUnit = nodeSpawner.Space;
-            var offsetX = nodeSpawnerUnit * nodeSpawner.Count.x / 2;
-            var offsetY = nodeSpawnerUnit * nodeSpawner.Count.y / 2;
+            var nodeSpace = nodeSpawner.NodeSpace;
+            var offsetX = nodeSpace * nodeSpawner.Count.x / 2;
+            var offsetY = nodeSpace * nodeSpawner.Count.y / 2;
             var finderSpawnerPos = nodeSpawner.Position + new float3(offsetX,0f, offsetY);
             
             // Set finderInitPos according to finder spawner pos.

@@ -17,6 +17,7 @@ namespace ProjectZ.AI.PathFinding
     public class FinderSpawnerAuthoring : MonoBehaviour, IConvertGameObjectToEntity, IDeclareReferencedPrefabs
     {
         public int Count;
+        [Tooltip("Should be less than half of the node count * space")]
         public int Radius;
         public GameObject Finder;
 

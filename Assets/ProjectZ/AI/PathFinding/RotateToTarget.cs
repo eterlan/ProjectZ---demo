@@ -9,7 +9,7 @@ namespace ProjectZ.AI.PathFinding
     {
         protected override void OnUpdate()
         {
-            var dt = Time.deltaTime;
+            //var dt = Time.deltaTime;
             Entities.ForEach(
                 (ref NavigateTarget navigateTarget,
                  ref Rotation       rotation,
@@ -31,16 +31,18 @@ namespace ProjectZ.AI.PathFinding
                     //rotation.Value = quaternion.AxisAngle(math.up(), newRot);
                     // @Todo: Quaternion Lerp.
                     var targetVec = navigateTarget.Position - localToWorld.Position;
-                    if (math.lengthsq(targetVec) < 1f)
+                    targetVec.y = 0;
+                    var length = math.lengthsq(targetVec);
+                    //Debug.Log($"rotLength: {length}");
+                    if (length < 1f)
                         return;
-                    
+
+                    //Debug.Log($"forward: {localToWorld.Forward}, Pos: {localToWorld.Position}, tarPos: {navigateTarget.Position}");
                     var forwardQua = quaternion.LookRotation(localToWorld.Forward, math.up());
                     var targetQua = quaternion.LookRotation(targetVec, math.up());
                     var newRot = math.nlerp(forwardQua, targetQua, rotSpeed.LerpSpeed);
                     rotation.Value = newRot;
                 });
-
-            return;
         }
 
         protected override void OnCreate() { }

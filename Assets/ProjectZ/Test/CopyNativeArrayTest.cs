@@ -15,7 +15,8 @@ namespace ProjectZ.Test
             hi[0] = 3;
             var hello = hi;
             hi.Dispose();
-            Assert.AreEqual(3,hello[0]);
+            Assert.AreEqual(false,hi.IsCreated);
+            // @Conclusion: NativeArray直接赋值相当于传递引用，因此释放拷贝者后，原容器无须释放，但原容器IsCreated却返回true
         }
     }
 }

@@ -12,19 +12,18 @@ namespace ProjectZ.Test.Static
     [TestFixture]
     public class StaticArrayTests : ECSTestsFixture
     {
+        // Conclusion: Component中的static并不会随test而重置。
+        // public void _0_Static_Array_In_Component_Legal()
+        // {
+        //     var target = S.Values[0];
+        //     Assert.AreEqual(1,target);
+        // }
+
         [Test]
-        public void _0_Static_Array_In_Component_Legal()
+        public void _0_Static_Array_Can_Exist_In_Component()
         {
             var target = S.Values[0];
             Assert.AreEqual(1,target);
-        }
-
-        [Test]
-        public void _0_Update_Static_Array()
-        {
-            World.GetOrCreateSystem<UpdateStaticArray>().Update();
-            var target = S.Values[0];
-            Assert.AreEqual(4,target);
         }
 
         [Test]
